@@ -2903,9 +2903,542 @@ return 4;
    CREATE CPU
 ========================================================= */
 
+/* =========================================================
+   GAME BOY MEMORY SYSTEM — STEP 5
+========================================================= */
+
+const gbMemory=new Uint8Array(0x10000);
+
+
+/* =========================================================
+   GAME BOY CARTRIDGE
+========================================================= */
+
+const gbCartridge={
+
+rom:null,
+
+romSize:0,
+
+ram:new Uint8Array(0x2000),
+
+romBank:1,
+
+ramBank:0,
+
+mbcType:0,
+
+ramEnabled:false
+
+};
+
+
+/* =========================================================
+   CARTRIDGE HEADER
+========================================================= */
+
+function gbDetectCartridge(){
+
+if(!gbCartridge.rom)
+return;
+
+
+/*
+   Cartridge type
+   $0147
+*/
+
+gbCartridge.mbcType=
+gbCartridge.rom[0x0147]||0;
+
+
+/*
+   ROM size
+   $0148
+*/
+
+const romSizeCode=
+gbCartridge.rom[0x0148]||0;
+
+
+/*
+   Calculate actual ROM size.
+*/
+
+if(romSizeCode<=8){
+
+gbCartridge.romSize=
+32768*(1<<romSizeCode);
+
+}
+else{
+
+gbCartridge.romSize=
+gbCartridge.rom.length;
+
+}
+
+
+console.log(
+"Game Boy cartridge type:",
+"0x"+
+gbCartridge.mbcType
+.toString(16)
+.padStart(2,"0")
+);
+
+
+console.log(
+"Game Boy cartridge ROM:",
+gbCartridge.romSize,
+"bytes"
+);
+
+}
+
+
+/* =========================================================
+   ROM READ
+========================================================= */
+
+function gbReadROM(addr){
+
+addr&=0xFFFF;
+
+
+if(!gbCartridge.rom)
+return 0xFF;
+
+
+/*
+   ROM Bank 0
+*/
+
+if(addr<0x4000){
+
+if(addr<gbCartridge.rom.length)
+return gbCartridge.rom[addr];
+
+return 0xFF;
+
+}
+
+
+/*
+   Switchable ROM bank
+*/
+
+if(addr<0x8000){
+
+let bank=gbCartridge.romBank;
+
+
+/*
+   Avoid bank zero in switchable area.
+*/
+
+if(bank===0)
+bank=1;
+
+
+const index=
+bank*0x4000+
+(addr-0x4000);
+
+
+if(index<gbCartridge.rom.length)
+return gbCartridge.rom[index];
+
+return 0xFF;
+
+}
+
+
+return 0xFF;
+
+}
+
+
+/* =========================================================
+   MEMORY READ
+========================================================= */
+
+function gbRead(addr){
+
+addr&=0xFFFF;
+
+
+/*
+   Cartridge ROM
+*/
+
+if(addr<0x8000){
+
+return gbReadROM(addr);
+
+}
+
+
+/*
+   Cartridge RAM
+*/
+
+if(
+addr>=0xA000 &&
+addr<0xC000
+){
+
+if(!gbCartridge.ramEnabled)
+return 0xFF;
+
+return gbCartridge.ram[
+gbCartridge.ramBank*0x2000+
+(addr-0xA000)
+];
+
+}
+
+
+/*
+   Echo RAM
+
+   $E000-$FDFF mirrors
+   $C000-$DDFF
+*/
+
+if(
+addr>=0xE000 &&
+addr<0xFE00
+){
+
+return gbMemory[
+addr-0x2000
+];
+
+}
+
+
+/*
+   Unusable area
+*/
+
+if(
+addr>=0xFEA0 &&
+addr<0xFF00
+){
+
+return 0xFF;
+
+}
+
+
+/*
+   Everything else
+*/
+
+return gbMemory[addr];
+
+}
+
+
+/* =========================================================
+   MEMORY WRITE
+========================================================= */
+
+function gbWrite(addr,value){
+
+addr&=0xFFFF;
+value&=0xFF;
+
+
+/*
+   Cartridge control area
+*/
+
+if(addr<0x8000){
+
+/*
+   For now we support the
+   simplest cartridge mapping.
+
+   MBC support will be expanded
+   later when needed.
+*/
+
+if(
+gbCartridge.mbcType===0
+){
+
+return;
+
+}
+
+
+/*
+   MBC1 RAM enable
+*/
+
+if(addr<0x2000){
+
+gbCartridge.ramEnabled=
+(value&0x0F)===0x0A;
+
+return;
+
+}
+
+
+/*
+   MBC1 ROM bank select
+*/
+
+if(
+addr>=0x2000 &&
+addr<0x4000
+){
+
+let bank=value&0x1F;
+
+if(bank===0)
+bank=1;
+
+gbCartridge.romBank=bank;
+
+return;
+
+}
+
+return;
+
+}
+
+
+/*
+   Cartridge RAM
+*/
+
+if(
+addr>=0xA000 &&
+addr<0xC000
+){
+
+if(!gbCartridge.ramEnabled)
+return;
+
+gbCartridge.ram[
+gbCartridge.ramBank*0x2000+
+(addr-0xA000)
+]=value;
+
+return;
+
+}
+
+
+/*
+   Echo RAM
+*/
+
+if(
+addr>=0xE000 &&
+addr<0xFE00
+){
+
+gbMemory[
+addr-0x2000
+]=value;
+
+return;
+
+}
+
+
+/*
+   Unusable area
+*/
+
+if(
+addr>=0xFEA0 &&
+addr<0xFF00
+){
+
+return;
+
+}
+
+
+/*
+   Normal RAM / I/O
+*/
+
+gbMemory[addr]=value;
+
+}
+
+
+/* =========================================================
+   CPU MEMORY CONNECTION
+========================================================= */
+
 const gbCPU=new GBCPU();
 
-gbCPU.mem=new Uint8Array(0x10000);
+
+/*
+   The CPU now uses the Game Boy
+   memory system instead of directly
+   accessing the raw 64 KB array.
+*/
+
+gbCPU.read=function(addr){
+
+return gbRead(addr);
+
+};
+
+
+gbCPU.write=function(addr,value){
+
+gbWrite(addr,value);
+
+};
+
+
+/* =========================================================
+   ROM LOADER
+========================================================= */
+
+const GB_ROM_PATH=
+"roms/Super Mario Land.gb";
+
+
+let gbROM=null;
+let gbROMLoaded=false;
+
+
+async function loadGBROM(){
+
+try{
+
+const response=
+await fetch(
+GB_ROM_PATH,
+{
+cache:"no-store"
+}
+);
+
+
+if(!response.ok){
+
+throw new Error(
+"HTTP "+response.status
+);
+
+}
+
+
+const buffer=
+await response.arrayBuffer();
+
+
+gbROM=
+new Uint8Array(buffer);
+
+
+gbCartridge.rom=
+gbROM;
+
+
+gbCartridge.romSize=
+gbROM.length;
+
+
+/*
+   Read cartridge header.
+*/
+
+gbDetectCartridge();
+
+
+gbROMLoaded=true;
+
+
+console.log(
+"Game Boy ROM loaded:",
+GB_ROM_PATH
+);
+
+
+console.log(
+"ROM size:",
+gbROM.length,
+"bytes"
+);
+
+
+/*
+   First instruction at $0100.
+*/
+
+console.log(
+"Entry opcode:",
+"0x"+
+gbRead(0x0100)
+.toString(16)
+.padStart(2,"0")
+);
+
+
+/*
+   Cartridge title.
+
+   Header $0134-$0143.
+*/
+
+let title="";
+
+for(
+let i=0x0134;
+i<=0x0143;
+i++
+){
+
+const ch=gbROM[i];
+
+if(
+ch>=32 &&
+ch<=126
+){
+
+title+=String.fromCharCode(ch);
+
+}
+
+}
+
+
+console.log(
+"Cartridge title:",
+title.trim()
+);
+
+
+}
+catch(e){
+
+gbROMLoaded=false;
+
+console.error(
+"Game Boy ROM loading failed:",
+e
+);
+
+}
+
+}
+
+
+loadGBROM();
    /* =========================================================
    GAME BOY MEMORY + ROM LOADER — STEP 3
 ========================================================= */
