@@ -1632,6 +1632,10 @@ return 4;
    CPU STEP
 --------------------------------------------------------- */
 
+/* ---------------------------------------------------------
+   CPU STEP — REAL GAME BOY INSTRUCTIONS
+--------------------------------------------------------- */
+
 step(){
 
 if(this.halted)
@@ -1640,22 +1644,1251 @@ return 4;
 if(this.stopped)
 return 4;
 
-let opcode=this.fetch8();
 
-switch(opcode){
+const op=this.fetch8();
+
+
+/* =========================================================
+   8-BIT REGISTER ACCESS
+========================================================= */
+
+const getR=(n)=>{
+
+switch(n){
+
+case 0:return this.b;
+case 1:return this.c;
+case 2:return this.d;
+case 3:return this.e;
+case 4:return this.h;
+case 5:return this.l;
+
+case 6:
+return this.read(this.hl);
+
+case 7:return this.a;
+
+}
+
+return 0;
+
+};
+
+
+const setR=(n,v)=>{
+
+v&=255;
+
+switch(n){
+
+case 0:this.b=v;break;
+case 1:this.c=v;break;
+case 2:this.d=v;break;
+case 3:this.e=v;break;
+case 4:this.h=v;break;
+case 5:this.l=v;break;
+
+case 6:
+this.write(this.hl,v);
+break;
+
+case 7:
+this.a=v;
+break;
+
+}
+
+};
+
+
+/* =========================================================
+   INC 8-BIT
+========================================================= */
+
+const inc8=(v)=>{
+
+const old=v&255;
+
+v=(v+1)&255;
+
+this.Z=(v===0);
+this.N=0;
+this.H=((old&15)+1)>15;
+
+return v;
+
+};
+
+
+/* =========================================================
+   DEC 8-BIT
+========================================================= */
+
+const dec8=(v)=>{
+
+const old=v&255;
+
+v=(v-1)&255;
+
+this.Z=(v===0);
+this.N=1;
+this.H=(old&15)===0;
+
+return v;
+
+};
+
+
+/* =========================================================
+   ADD A,r
+========================================================= */
+
+const addA=(v)=>{
+
+v&=255;
+
+const a=this.a;
+
+const result=a+v;
+
+this.a=result&255;
+
+this.Z=(this.a===0);
+this.N=0;
+this.H=((a&15)+(v&15))>15;
+this.CARRY=result>255;
+
+};
+
+
+/* =========================================================
+   SUB A,r
+========================================================= */
+
+const subA=(v)=>{
+
+v&=255;
+
+const a=this.a;
+
+const result=a-v;
+
+this.a=result&255;
+
+this.Z=(this.a===0);
+this.N=1;
+this.H=(a&15)<(v&15);
+this.CARRY=a<v;
+
+};
+
+
+/* =========================================================
+   CP
+========================================================= */
+
+const cpA=(v)=>{
+
+v&=255;
+
+const a=this.a;
+
+const result=a-v;
+
+this.Z=((result&255)===0);
+this.N=1;
+this.H=(a&15)<(v&15);
+this.CARRY=a<v;
+
+};
+
+
+/* =========================================================
+   XOR A
+========================================================= */
+
+const xorA=(v)=>{
+
+this.a=(this.a^(v&255))&255;
+
+this.Z=(this.a===0);
+this.N=0;
+this.H=0;
+this.CARRY=0;
+
+};
+
+
+/* =========================================================
+   OR A
+========================================================= */
+
+const orA=(v)=>{
+
+this.a=(this.a|(v&255))&255;
+
+this.Z=(this.a===0);
+this.N=0;
+this.H=0;
+this.CARRY=0;
+
+};
+
+
+/* =========================================================
+   AND A
+========================================================= */
+
+const andA=(v)=>{
+
+this.a=(this.a&(v&255))&255;
+
+this.Z=(this.a===0);
+this.N=0;
+this.H=1;
+this.CARRY=0;
+
+};
+
+
+/* =========================================================
+   LD r,r
+========================================================= */
+
+/*
+   0x40 - 0x7F
+
+   HALT = 0x76
+*/
+
+if(
+op>=0x40 &&
+op<=0x7F
+){
+
+if(op===0x76){
+
+this.halted=true;
+
+return 4;
+
+}
+
+const dst=(op>>3)&7;
+const src=op&7;
+
+setR(
+dst,
+getR(src)
+);
+
+return (
+dst===6 ||
+src===6
+)
+?
+8
+:
+4;
+
+}
+
+
+/* =========================================================
+   ALU A,r
+========================================================= */
+
+/*
+   80-87 ADD
+   88-8F ADC
+   90-97 SUB
+   98-9F SBC
+   A0-A7 AND
+   A8-AF XOR
+   B0-B7 OR
+   B8-BF CP
+*/
+
+if(
+op>=0x80 &&
+op<=0xBF
+){
+
+const r=op&7;
+const v=getR(r);
+
+if(op<0x88){
+
+addA(v);
+
+}
+
+else if(op<0x90){
+
+const carry=this.CARRY?1:0;
+
+const a=this.a;
+const result=a+v+carry;
+
+this.a=result&255;
+
+this.Z=(this.a===0);
+this.N=0;
+this.H=((a&15)+(v&15)+carry)>15;
+this.CARRY=result>255;
+
+}
+
+else if(op<0x98){
+
+subA(v);
+
+}
+
+else if(op<0xA0){
+
+const carry=this.CARRY?1:0;
+
+const a=this.a;
+const result=a-v-carry;
+
+this.a=result&255;
+
+this.Z=(this.a===0);
+this.N=1;
+this.H=((a&15)-(v&15)-carry)<0;
+this.CARRY=result<0;
+
+}
+
+else if(op<0xA8){
+
+andA(v);
+
+}
+
+else if(op<0xB0){
+
+xorA(v);
+
+}
+
+else if(op<0xB8){
+
+orA(v);
+
+}
+
+else{
+
+cpA(v);
+
+}
+
+return r===6 ? 8 : 4;
+
+}
+
+
+/* =========================================================
+   8-BIT INC / DEC REGISTER
+========================================================= */
+
+if(
+(op&0xC7)===0x04
+){
+
+const r=(op>>3)&7;
+
+setR(
+r,
+inc8(getR(r))
+);
+
+return r===6 ? 12 : 4;
+
+}
+
+
+if(
+(op&0xC7)===0x05
+){
+
+const r=(op>>3)&7;
+
+setR(
+r,
+dec8(getR(r))
+);
+
+return r===6 ? 12 : 4;
+
+}
+
+
+/* =========================================================
+   8-BIT IMMEDIATE LOAD
+========================================================= */
+
+switch(op){
+
+case 0x06:
+this.b=this.fetch8();
+return 8;
+
+case 0x0E:
+this.c=this.fetch8();
+return 8;
+
+case 0x16:
+this.d=this.fetch8();
+return 8;
+
+case 0x1E:
+this.e=this.fetch8();
+return 8;
+
+case 0x26:
+this.h=this.fetch8();
+return 8;
+
+case 0x2E:
+this.l=this.fetch8();
+return 8;
+
+case 0x36:
+this.write(
+this.hl,
+this.fetch8()
+);
+return 12;
+
+case 0x3E:
+this.a=this.fetch8();
+return 8;
+
+
+/* =========================================================
+   NOP
+========================================================= */
 
 case 0x00:
+return 4;
 
-return this.nop();
 
+/* =========================================================
+   STOP
+========================================================= */
+
+case 0x10:
+
+this.fetch8();
+
+this.stopped=true;
+
+return 4;
+
+
+/* =========================================================
+   16-BIT LOAD
+========================================================= */
+
+case 0x01:
+this.bc=this.fetch16();
+return 12;
+
+case 0x11:
+this.de=this.fetch16();
+return 12;
+
+case 0x21:
+this.hl=this.fetch16();
+return 12;
+
+case 0x31:
+this.sp=this.fetch16();
+return 12;
+
+
+/* =========================================================
+   INC 16-BIT
+========================================================= */
+
+case 0x03:
+this.bc=(this.bc+1)&0xFFFF;
+return 8;
+
+case 0x13:
+this.de=(this.de+1)&0xFFFF;
+return 8;
+
+case 0x23:
+this.hl=(this.hl+1)&0xFFFF;
+return 8;
+
+case 0x33:
+this.sp=(this.sp+1)&0xFFFF;
+return 8;
+
+
+/* =========================================================
+   DEC 16-BIT
+========================================================= */
+
+case 0x0B:
+this.bc=(this.bc-1)&0xFFFF;
+return 8;
+
+case 0x1B:
+this.de=(this.de-1)&0xFFFF;
+return 8;
+
+case 0x2B:
+this.hl=(this.hl-1)&0xFFFF;
+return 8;
+
+case 0x3B:
+this.sp=(this.sp-1)&0xFFFF;
+return 8;
+
+
+/* =========================================================
+   LD (BC),A
+========================================================= */
+
+case 0x02:
+
+this.write(
+this.bc,
+this.a
+);
+
+return 8;
+
+
+/* =========================================================
+   LD (DE),A
+========================================================= */
+
+case 0x12:
+
+this.write(
+this.de,
+this.a
+);
+
+return 8;
+
+
+/* =========================================================
+   LD A,(BC)
+========================================================= */
+
+case 0x0A:
+
+this.a=this.read(this.bc);
+
+return 8;
+
+
+/* =========================================================
+   LD A,(DE)
+========================================================= */
+
+case 0x1A:
+
+this.a=this.read(this.de);
+
+return 8;
+
+
+/* =========================================================
+   LD (HL+),A
+========================================================= */
+
+case 0x22:
+
+this.write(
+this.hl,
+this.a
+);
+
+this.hl=(this.hl+1)&0xFFFF;
+
+return 8;
+
+
+/* =========================================================
+   LD (HL-),A
+========================================================= */
+
+case 0x32:
+
+this.write(
+this.hl,
+this.a
+);
+
+this.hl=(this.hl-1)&0xFFFF;
+
+return 8;
+
+
+/* =========================================================
+   LD A,(HL+)
+========================================================= */
+
+case 0x2A:
+
+this.a=this.read(this.hl);
+
+this.hl=(this.hl+1)&0xFFFF;
+
+return 8;
+
+
+/* =========================================================
+   LD A,(HL-)
+========================================================= */
+
+case 0x3A:
+
+this.a=this.read(this.hl);
+
+this.hl=(this.hl-1)&0xFFFF;
+
+return 8;
+
+
+/* =========================================================
+   ADD HL,rr
+========================================================= */
+
+case 0x09:{
+
+const old=this.hl;
+const v=this.bc;
+const result=old+v;
+
+this.N=0;
+this.H=((old&0xFFF)+(v&0xFFF))>0xFFF;
+this.CARRY=result>0xFFFF;
+
+this.hl=result&0xFFFF;
+
+return 8;
+
+}
+
+case 0x19:{
+
+const old=this.hl;
+const v=this.de;
+const result=old+v;
+
+this.N=0;
+this.H=((old&0xFFF)+(v&0xFFF))>0xFFF;
+this.CARRY=result>0xFFFF;
+
+this.hl=result&0xFFFF;
+
+return 8;
+
+}
+
+case 0x29:{
+
+const old=this.hl;
+const v=this.hl;
+const result=old+v;
+
+this.N=0;
+this.H=((old&0xFFF)+(v&0xFFF))>0xFFF;
+this.CARRY=result>0xFFFF;
+
+this.hl=result&0xFFFF;
+
+return 8;
+
+}
+
+case 0x39:{
+
+const old=this.hl;
+const v=this.sp;
+const result=old+v;
+
+this.N=0;
+this.H=((old&0xFFF)+(v&0xFFF))>0xFFF;
+this.CARRY=result>0xFFFF;
+
+this.hl=result&0xFFFF;
+
+return 8;
+
+}
+
+
+/* =========================================================
+   ADD A,n
+========================================================= */
+
+case 0xC6:
+
+addA(this.fetch8());
+
+return 8;
+
+
+/* =========================================================
+   SUB n
+========================================================= */
+
+case 0xD6:
+
+subA(this.fetch8());
+
+return 8;
+
+
+/* =========================================================
+   AND n
+========================================================= */
+
+case 0xE6:
+
+andA(this.fetch8());
+
+return 8;
+
+
+/* =========================================================
+   XOR n
+========================================================= */
+
+case 0xEE:
+
+xorA(this.fetch8());
+
+return 8;
+
+
+/* =========================================================
+   OR n
+========================================================= */
+
+case 0xF6:
+
+orA(this.fetch8());
+
+return 8;
+
+
+/* =========================================================
+   CP n
+========================================================= */
+
+case 0xFE:
+
+cpA(this.fetch8());
+
+return 8;
+
+
+/* =========================================================
+   XOR A
+========================================================= */
+
+case 0xAF:
+
+this.a=0;
+
+this.Z=1;
+this.N=0;
+this.H=0;
+this.CARRY=0;
+
+return 4;
+
+
+/* =========================================================
+   JP nn
+========================================================= */
+
+case 0xC3:
+
+this.pc=this.fetch16();
+
+return 16;
+
+
+/* =========================================================
+   JP NZ,nn
+========================================================= */
+
+case 0xC2:{
+
+const a=this.fetch16();
+
+if(!this.Z)
+this.pc=a;
+
+return 16;
+
+}
+
+
+/* =========================================================
+   JP Z,nn
+========================================================= */
+
+case 0xCA:{
+
+const a=this.fetch16();
+
+if(this.Z)
+this.pc=a;
+
+return 16;
+
+}
+
+
+/* =========================================================
+   JP NC,nn
+========================================================= */
+
+case 0xD2:{
+
+const a=this.fetch16();
+
+if(!this.CARRY)
+this.pc=a;
+
+return 16;
+
+}
+
+
+/* =========================================================
+   JP C,nn
+========================================================= */
+
+case 0xDA:{
+
+const a=this.fetch16();
+
+if(this.CARRY)
+this.pc=a;
+
+return 16;
+
+}
+
+
+/* =========================================================
+   JR r8
+========================================================= */
+
+case 0x18:{
+
+const offset=this.fetch8();
+
+const signed=
+offset<128
+?
+offset
+:
+offset-256;
+
+this.pc=
+(this.pc+signed)&0xFFFF;
+
+return 12;
+
+}
+
+
+/* =========================================================
+   JR NZ,r8
+========================================================= */
+
+case 0x20:{
+
+const offset=this.fetch8();
+
+if(!this.Z){
+
+const signed=
+offset<128
+?
+offset
+:
+offset-256;
+
+this.pc=
+(this.pc+signed)&0xFFFF;
+
+return 12;
+
+}
+
+return 8;
+
+}
+
+
+/* =========================================================
+   JR Z,r8
+========================================================= */
+
+case 0x28:{
+
+const offset=this.fetch8();
+
+if(this.Z){
+
+const signed=
+offset<128
+?
+offset
+:
+offset-256;
+
+this.pc=
+(this.pc+signed)&0xFFFF;
+
+return 12;
+
+}
+
+return 8;
+
+}
+
+
+/* =========================================================
+   JR NC,r8
+========================================================= */
+
+case 0x30:{
+
+const offset=this.fetch8();
+
+if(!this.CARRY){
+
+const signed=
+offset<128
+?
+offset
+:
+offset-256;
+
+this.pc=
+(this.pc+signed)&0xFFFF;
+
+return 12;
+
+}
+
+return 8;
+
+}
+
+
+/* =========================================================
+   JR C,r8
+========================================================= */
+
+case 0x38:{
+
+const offset=this.fetch8();
+
+if(this.CARRY){
+
+const signed=
+offset<128
+?
+offset
+:
+offset-256;
+
+this.pc=
+(this.pc+signed)&0xFFFF;
+
+return 12;
+
+}
+
+return 8;
+
+}
+
+
+/* =========================================================
+   CALL nn
+========================================================= */
+
+case 0xCD:{
+
+const addr=this.fetch16();
+
+this.push16(this.pc);
+
+this.pc=addr;
+
+return 24;
+
+}
+
+
+/* =========================================================
+   RET
+========================================================= */
+
+case 0xC9:
+
+this.pc=this.pop16();
+
+return 16;
+
+
+/* =========================================================
+   PUSH
+========================================================= */
+
+case 0xC5:
+
+this.push16(this.bc);
+
+return 16;
+
+case 0xD5:
+
+this.push16(this.de);
+
+return 16;
+
+case 0xE5:
+
+this.push16(this.hl);
+
+return 16;
+
+case 0xF5:
+
+this.push16(this.af);
+
+return 16;
+
+
+/* =========================================================
+   POP
+========================================================= */
+
+case 0xC1:
+
+this.bc=this.pop16();
+
+return 12;
+
+case 0xD1:
+
+this.de=this.pop16();
+
+return 12;
+
+case 0xE1:
+
+this.hl=this.pop16();
+
+return 12;
+
+case 0xF1:
+
+this.af=this.pop16();
+
+return 12;
+
+
+/* =========================================================
+   DI / EI
+========================================================= */
+
+case 0xF3:
+
+this.ime=false;
+
+return 4;
+
+case 0xFB:
+
+this.ime=true;
+
+return 4;
+
+
+/* =========================================================
+   RETI
+========================================================= */
+
+case 0xD9:
+
+this.pc=this.pop16();
+this.ime=true;
+
+return 16;
+
+
+/* =========================================================
+   RLA
+========================================================= */
+
+case 0x17:{
+
+const oldCarry=this.CARRY?1:0;
+const newCarry=(this.a&0x80)!==0;
+
+this.a=((this.a<<1)&255)|oldCarry;
+
+this.Z=0;
+this.N=0;
+this.H=0;
+this.CARRY=newCarry;
+
+return 4;
+
+}
+
+
+/* =========================================================
+   RLCA
+========================================================= */
+
+case 0x07:{
+
+const newCarry=(this.a&0x80)!==0;
+
+this.a=((this.a<<1)&255)|
+(newCarry?1:0);
+
+this.Z=0;
+this.N=0;
+this.H=0;
+this.CARRY=newCarry;
+
+return 4;
+
+}
+
+
+/* =========================================================
+   RRA
+========================================================= */
+
+case 0x1F:{
+
+const oldCarry=this.CARRY?1:0;
+const newCarry=(this.a&1)!==0;
+
+this.a=(this.a>>1)|(oldCarry?0x80:0);
+
+this.Z=0;
+this.N=0;
+this.H=0;
+this.CARRY=newCarry;
+
+return 4;
+
+}
+
+
+/* =========================================================
+   RRCA
+========================================================= */
+
+case 0x0F:{
+
+const newCarry=(this.a&1)!==0;
+
+this.a=(this.a>>1)|
+(newCarry?0x80:0);
+
+this.Z=0;
+this.N=0;
+this.H=0;
+this.CARRY=newCarry;
+
+return 4;
+
+}
+
+
+/* =========================================================
+   CPL
+========================================================= */
+
+case 0x2F:
+
+this.a=(~this.a)&255;
+
+this.N=1;
+this.H=1;
+
+return 4;
+
+
+/* =========================================================
+   SCF
+========================================================= */
+
+case 0x37:
+
+this.N=0;
+this.H=0;
+this.CARRY=1;
+
+return 4;
+
+
+/* =========================================================
+   CCF
+========================================================= */
+
+case 0x3F:
+
+this.N=0;
+this.H=0;
+this.CARRY=!this.CARRY;
+
+return 4;
+
+
+/* =========================================================
+   HALT
+========================================================= */
+
+case 0x76:
+
+this.halted=true;
+
+return 4;
+
+
+/* =========================================================
+   UNKNOWN OPCODE
+========================================================= */
 
 default:
 
-/*
-   Temporary CPU development mode.
-   Unknown instructions are treated as NOP
-   until their implementation is added.
-*/
+console.warn(
+"Game Boy CPU: unsupported opcode 0x"+
+op.toString(16).padStart(2,"0")+
+" at 0x"+
+((this.pc-1)&0xFFFF)
+.toString(16)
+.padStart(4,"0")
+);
 
 return 4;
 
