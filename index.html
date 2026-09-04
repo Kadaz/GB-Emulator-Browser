@@ -1389,7 +1389,319 @@ jumpBtn.focus();
 },
 300
 );
+/* =========================================================
+   GAME BOY CPU — STEP 2
+========================================================= */
 
+class GBCPU{
+
+constructor(){
+
+this.a=0x01;
+this.f=0xB0;
+
+this.b=0x00;
+this.c=0x13;
+
+this.d=0x00;
+this.e=0xD8;
+
+this.h=0x01;
+this.l=0x4D;
+
+this.sp=0xFFFE;
+this.pc=0x0100;
+
+this.halted=false;
+this.stopped=false;
+
+this.ime=false;
+
+}
+
+
+/* ---------------------------------------------------------
+   16-bit registers
+--------------------------------------------------------- */
+
+get af(){
+return (this.a<<8)|this.f;
+}
+
+set af(v){
+this.a=(v>>8)&255;
+this.f=v&0xF0;
+}
+
+
+get bc(){
+return (this.b<<8)|this.c;
+}
+
+set bc(v){
+this.b=(v>>8)&255;
+this.c=v&255;
+}
+
+
+get de(){
+return (this.d<<8)|this.e;
+}
+
+set de(v){
+this.d=(v>>8)&255;
+this.e=v&255;
+}
+
+
+get hl(){
+return (this.h<<8)|this.l;
+}
+
+set hl(v){
+this.h=(v>>8)&255;
+this.l=v&255;
+}
+
+
+/* ---------------------------------------------------------
+   FLAGS
+--------------------------------------------------------- */
+
+get Z(){
+return !!(this.f&0x80);
+}
+
+set Z(v){
+if(v)this.f|=0x80;
+else this.f&=~0x80;
+}
+
+
+get N(){
+return !!(this.f&0x40);
+}
+
+set N(v){
+if(v)this.f|=0x40;
+else this.f&=~0x40;
+}
+
+
+get H(){
+return !!(this.f&0x20);
+}
+
+set H(v){
+if(v)this.f|=0x20;
+else this.f&=~0x20;
+}
+
+
+get CARRY(){
+return !!(this.f&0x10);
+}
+
+set CARRY(v){
+if(v)this.f|=0x10;
+else this.f&=~0x10;
+}
+
+
+/* ---------------------------------------------------------
+   MEMORY
+--------------------------------------------------------- */
+
+read(addr){
+
+addr&=0xFFFF;
+
+if(this.mem)
+return this.mem[addr]&255;
+
+return 0xFF;
+
+}
+
+
+write(addr,value){
+
+addr&=0xFFFF;
+value&=255;
+
+if(this.mem)
+this.mem[addr]=value;
+
+}
+
+
+/* ---------------------------------------------------------
+   FETCH
+--------------------------------------------------------- */
+
+fetch8(){
+
+let v=this.read(this.pc);
+
+this.pc=(this.pc+1)&0xFFFF;
+
+return v;
+
+}
+
+
+fetch16(){
+
+let lo=this.fetch8();
+let hi=this.fetch8();
+
+return lo|(hi<<8);
+
+}
+
+
+/* ---------------------------------------------------------
+   STACK
+--------------------------------------------------------- */
+
+push16(v){
+
+this.sp=(this.sp-1)&0xFFFF;
+this.write(this.sp,(v>>8)&255);
+
+this.sp=(this.sp-1)&0xFFFF;
+this.write(this.sp,v&255);
+
+}
+
+
+pop16(){
+
+let lo=this.read(this.sp);
+this.sp=(this.sp+1)&0xFFFF;
+
+let hi=this.read(this.sp);
+this.sp=(this.sp+1)&0xFFFF;
+
+return lo|(hi<<8);
+
+}
+
+
+/* ---------------------------------------------------------
+   CPU RESET
+--------------------------------------------------------- */
+
+reset(){
+
+this.a=0x01;
+this.f=0xB0;
+
+this.b=0x00;
+this.c=0x13;
+
+this.d=0x00;
+this.e=0xD8;
+
+this.h=0x01;
+this.l=0x4D;
+
+this.sp=0xFFFE;
+this.pc=0x0100;
+
+this.halted=false;
+this.stopped=false;
+
+this.ime=false;
+
+}
+
+
+/* ---------------------------------------------------------
+   NOP
+--------------------------------------------------------- */
+
+nop(){
+
+return 4;
+
+}
+
+
+/* ---------------------------------------------------------
+   CPU STEP
+--------------------------------------------------------- */
+
+step(){
+
+if(this.halted)
+return 4;
+
+if(this.stopped)
+return 4;
+
+let opcode=this.fetch8();
+
+switch(opcode){
+
+case 0x00:
+
+return this.nop();
+
+
+default:
+
+/*
+   Temporary CPU development mode.
+   Unknown instructions are treated as NOP
+   until their implementation is added.
+*/
+
+return 4;
+
+}
+
+}
+
+}
+
+
+/* =========================================================
+   CREATE CPU
+========================================================= */
+
+const gbCPU=new GBCPU();
+
+gbCPU.mem=new Uint8Array(0x10000);
+
+
+/* =========================================================
+   CPU TEST
+========================================================= */
+
+/*
+   Game Boy starts execution at $0100.
+
+   Put a NOP there and execute one instruction.
+*/
+
+gbCPU.mem[0x0100]=0x00;
+
+gbCPU.step();
+
+
+/*
+   CPU is alive if PC advanced from $0100 to $0101.
+*/
+
+console.log(
+"Game Boy CPU STEP 2:",
+gbCPU.pc===0x0101
+?
+"OK"
+:
+"ERROR"
+);
 </script>
 
 </body>
