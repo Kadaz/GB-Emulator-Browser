@@ -1,1337 +1,536 @@
 <!doctype html>
 <html>
-
 <head>
-
 <meta charset="utf-8">
-
 <meta name="viewport"
-content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+      content="width=device-width,initial-scale=1,
+      maximum-scale=1,user-scalable=no">
 
-<title>Retro Land - Game Boy PS5</title>
-
+<title>Retro Land - Game Boy</title>
 
 <style>
-
 html,body{
-
-margin:0;
-width:100%;
-height:100%;
-overflow:hidden;
-
-background:#111;
-
-color:#e5efc8;
-
-font-family:Arial,sans-serif;
-
-touch-action:none;
-
+    margin:0;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+    background:#111;
+    color:#e5efc8;
+    font-family:Arial,sans-serif;
+    touch-action:none;
 }
 
-
-/* =========================================================
-   TOP BAR
-========================================================= */
-
 #bar{
-
-height:50px;
-
-background:#1c2418;
-
-display:flex;
-
-align-items:center;
-
-justify-content:space-between;
-
-padding:0 12px;
-
-box-sizing:border-box;
-
+    height:50px;
+    background:#1c2418;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 12px;
+    box-sizing:border-box;
 }
 
 button{
-
-background:#293426;
-
-color:#e5efc8;
-
-border:1px solid #607052;
-
-border-radius:6px;
-
-padding:7px 11px;
-
-font-weight:bold;
-
+    background:#293426;
+    color:#e5efc8;
+    border:1px solid #607052;
+    border-radius:6px;
+    padding:7px 11px;
+    font-weight:bold;
 }
-
-
-/* =========================================================
-   GAME AREA
-========================================================= */
 
 #stage{
-
-height:calc(100% - 80px);
-
-display:flex;
-
-align-items:center;
-
-justify-content:center;
-
+    height:calc(100% - 80px);
+    display:flex;
+    align-items:center;
+    justify-content:center;
 }
 
-canvas{
-
-width:min(100%,960px);
-
-height:auto;
-
-max-height:100%;
-
-image-rendering:pixelated;
-
-image-rendering:crisp-edges;
-
-background:#cbd99e;
-
-border:8px solid #20271d;
-
-box-sizing:border-box;
-
+#gameboy{
+    width:320px;
+    height:288px;
+    image-rendering:pixelated;
+    image-rendering:crisp-edges;
+    background:#cbd99e;
+    border:8px solid #20271d;
+    box-sizing:content-box;
 }
 
-
-/* =========================================================
-   HINT
-========================================================= */
+#status{
+    position:fixed;
+    left:50%;
+    top:60px;
+    transform:translateX(-50%);
+    font-size:13px;
+    z-index:100;
+}
 
 #hint{
-
-text-align:center;
-
-height:30px;
-
-font-size:12px;
-
-opacity:.8;
-
-padding-top:7px;
-
-box-sizing:border-box;
-
+    text-align:center;
+    height:30px;
+    font-size:12px;
+    opacity:.8;
+    padding-top:7px;
+    box-sizing:border-box;
 }
 
-
-/* =========================================================
-   GAME BOY CONTROLS
-========================================================= */
-
-#gbControls{
-
-position:fixed;
-
-left:0;
-
-right:0;
-
-bottom:18px;
-
-height:125px;
-
-z-index:40;
-
-pointer-events:none;
-
-}
-
-
-/* =========================================================
-   D-PAD
-========================================================= */
-
-#dpad{
-
-position:absolute;
-
-left:28px;
-
-bottom:10px;
-
-width:120px;
-
-height:100px;
-
-pointer-events:none;
-
-}
-
-
-.gbD{
-
-position:absolute;
-
-width:40px;
-
-height:40px;
-
-padding:0;
-
-border-radius:5px;
-
-background:#38482f;
-
-border:2px solid #91a978;
-
-color:#eef6d5;
-
-font-size:20px;
-
-line-height:36px;
-
-text-align:center;
-
-pointer-events:auto;
-
-touch-action:none;
-
--webkit-user-select:none;
-
-user-select:none;
-
-}
-
-#up{
-
-left:40px;
-top:0;
-
-}
-
-#left{
-
-left:0;
-top:40px;
-
-}
-
-#right{
-
-right:0;
-top:40px;
-
-}
-
-#down{
-
-left:40px;
-bottom:0;
-
-}
-
-
-/* =========================================================
-   A / B
-========================================================= */
-
-#actionButtons{
-
-position:absolute;
-
-right:25px;
-
-bottom:30px;
-
-width:145px;
-
-height:65px;
-
-pointer-events:none;
-
+#actions{
+    position:fixed;
+    right:28px;
+    bottom:40px;
+    display:flex;
+    gap:12px;
+    z-index:50;
 }
 
 .action{
-
-position:absolute;
-
-width:62px;
-
-height:62px;
-
-border-radius:50%;
-
-padding:0;
-
-background:#38482f;
-
-border:2px solid #91a978;
-
-color:#eef6d5;
-
-font-size:18px;
-
-pointer-events:auto;
-
-touch-action:none;
-
--webkit-user-select:none;
-
-user-select:none;
-
+    width:58px;
+    height:58px;
+    border-radius:50%;
+    font-size:16px;
+    padding:0;
 }
 
-#bBtn{
-
-left:0;
-
-bottom:0;
-
-}
-
-#aBtn{
-
-right:0;
-
-bottom:0;
-
-}
-
-
-/* =========================================================
-   START / SELECT
-========================================================= */
-
-#menuButtons{
-
-position:absolute;
-
-left:50%;
-
-bottom:0;
-
-transform:translateX(-50%);
-
-display:flex;
-
-gap:12px;
-
-pointer-events:none;
-
+#menu{
+    position:fixed;
+    left:50%;
+    transform:translateX(-50%);
+    bottom:25px;
+    display:flex;
+    gap:10px;
+    z-index:50;
 }
 
 .menuBtn{
-
-width:72px;
-
-height:32px;
-
-padding:0;
-
-font-size:10px;
-
-border-radius:12px;
-
-pointer-events:auto;
-
-touch-action:none;
-
--webkit-user-select:none;
-
-user-select:none;
-
+    width:75px;
+    height:30px;
+    padding:0;
+    font-size:11px;
 }
 
-
-/* =========================================================
-   BUTTON PRESS
-========================================================= */
-
-.gbD:active,
-.action:active,
-.menuBtn:active{
-
-transform:scale(.92);
-
+.action:focus,
+.menuBtn:focus{
+    outline:3px solid #dce9b8;
+    outline-offset:3px;
 }
-
 </style>
-
 </head>
-
 
 <body>
 
-
 <div id="bar">
+    <b>RETRO LAND — GAME BOY</b>
 
-<b>RETRO LAND — GAME BOY</b>
-
-<span>
-
-<button id="pause">PAUSE</button>
-
-<button id="reset">RESET</button>
-
-<button id="sound">SOUND</button>
-
-</span>
-
+    <span>
+        <button id="pause">PAUSE</button>
+        <button id="reset">RESET</button>
+    </span>
 </div>
-
 
 <div id="stage">
-
-<canvas
-id="c"
-width="160"
-height="144"
-tabindex="0">
-</canvas>
-
+    <canvas id="gameboy"
+            width="160"
+            height="144">
+    </canvas>
 </div>
 
+<div id="status">
+    Loading Game Boy emulator...
+</div>
 
 <div id="hint">
+    DualSense D-pad / Left Stick = D-pad ·
+    Cursor + X = A / B / START / SELECT
+</div>
 
-DualSense D-pad / Left Stick = D-pad · Cursor + X = A / B / START / SELECT
+<div id="actions">
+    <button class="action" id="b">B</button>
+    <button class="action" id="a">A</button>
+</div>
 
+<div id="menu">
+    <button class="menuBtn" id="select">SELECT</button>
+    <button class="menuBtn" id="start">START</button>
 </div>
 
 
-<!-- =========================================================
-     GAME BOY CONTROLS
-========================================================= -->
-
-<div id="gbControls">
-
-
-<div id="dpad">
-
-<button
-class="gbD"
-id="up"
-type="button">
-▲
-</button>
-
-<button
-class="gbD"
-id="left"
-type="button">
-◀
-</button>
-
-<button
-class="gbD"
-id="right"
-type="button">
-▶
-</button>
-
-<button
-class="gbD"
-id="down"
-type="button">
-▼
-</button>
-
-</div>
-
-
-<div id="menuButtons">
-
-<button
-class="menuBtn"
-id="selectBtn"
-type="button">
-SELECT
-</button>
-
-<button
-class="menuBtn"
-id="startBtn"
-type="button">
-START
-</button>
-
-</div>
-
-
-<div id="actionButtons">
-
-<button
-class="action"
-id="bBtn"
-type="button">
-B
-</button>
-
-<button
-class="action"
-id="aBtn"
-type="button">
-A
-</button>
-
-</div>
-
-
-</div>
+<!--
+    REAL GAME BOY EMULATOR
+    Loaded directly from the official GitHub source.
+-->
+<script src="https://raw.githubusercontent.com/juchi/gameboy.js/master/dist/gameboy.min.js"></script>
 
 
 <script>
-
 "use strict";
 
+const canvas =
+    document.getElementById("gameboy");
 
-/* =========================================================
-   CANVAS
-========================================================= */
+const status =
+    document.getElementById("status");
 
-const c=document.getElementById("c");
-
-const x=c.getContext("2d");
-
-const W=160;
-const H=144;
-
-x.imageSmoothingEnabled=false;
+let gb = null;
 
 
-/* =========================================================
-   INPUT STATE
-========================================================= */
+/* --------------------------------------------------
+   KEYBOARD BRIDGE
+-------------------------------------------------- */
+
+function key(code,down){
+
+    document.dispatchEvent(
+        new KeyboardEvent(
+            down ? "keydown" : "keyup",
+            {
+                key:code,
+                code:code,
+                bubbles:true
+            }
+        )
+    );
+
+}
+
 
 /*
-   These are the Game Boy inputs.
+    gameboy.js uses:
 
-   IMPORTANT:
-
-   The physical DualSense buttons are NOT used
-   for A / B / START / SELECT.
-
-   Only the PS5 D-pad / Left Stick are read
-   directly.
-
-   A / B / START / SELECT are controlled by
-   the visible buttons and the cursor + X.
+    Arrow keys = D-pad
+    G = A
+    B = B
+    H = START
+    N = SELECT
 */
 
-const gb={
 
-up:0,
-down:0,
-left:0,
-right:0,
+const keyMap = {
 
-a:0,
-b:0,
-
-start:0,
-select:0
+    a:"KeyG",
+    b:"KeyB",
+    start:"KeyH",
+    select:"KeyN"
 
 };
 
 
-/* =========================================================
-   GAME STATE
-========================================================= */
+/* --------------------------------------------------
+   ON-SCREEN A/B/START/SELECT
+-------------------------------------------------- */
 
-let pause=0;
+function virtualButton(id,name){
 
-let sound=0;
+    const button =
+        document.getElementById(id);
 
-let last=0;
+    function down(e){
 
-let opt=0;
+        e.preventDefault();
+        e.stopPropagation();
 
+        key(keyMap[name],true);
+    }
 
-/* =========================================================
-   ROM PATH
-========================================================= */
+    function up(e){
 
-const ROM_PATH="roms/Super Mario Land.gb";
+        e.preventDefault();
+        e.stopPropagation();
 
+        key(keyMap[name],false);
+    }
 
-/*
-   ROM data will be connected here
-   when the Game Boy emulator core is added.
-*/
+    button.addEventListener(
+        "pointerdown",
+        down,
+        {passive:false}
+    );
 
-let rom=null;
+    button.addEventListener(
+        "pointerup",
+        up,
+        {passive:false}
+    );
 
-let romLoaded=0;
+    button.addEventListener(
+        "pointercancel",
+        up,
+        {passive:false}
+    );
 
-let romError="";
+    button.addEventListener(
+        "pointerleave",
+        up,
+        {passive:false}
+    );
 
+}
 
-/* =========================================================
-   TEST SCREEN
-========================================================= */
-
-function draw(){
-
-x.fillStyle="#cbd99e";
-
-x.fillRect(
-0,
-0,
-W,
-H
-);
-
-
-/*
-   Temporary Game Boy style screen.
-
-   This will be replaced by the real
-   emulator video output.
-*/
-
-x.fillStyle="#26321f";
-
-x.fillRect(
-8,
-8,
-144,
-128
-);
+virtualButton("a","a");
+virtualButton("b","b");
+virtualButton("start","start");
+virtualButton("select","select");
 
 
-x.fillStyle="#cbd99e";
+/* --------------------------------------------------
+   DUALSENSE
+   SAME WORKING MAPPING
+-------------------------------------------------- */
 
-x.font="10px monospace";
+const padState = {
 
-x.textAlign="center";
+    left:false,
+    right:false,
+    up:false,
+    down:false
 
-x.fillText(
-"GAME BOY",
-80,
-42
-);
+};
+
+function updatePad(){
+
+    try{
+
+        const pads =
+            navigator.getGamepads
+            ? navigator.getGamepads()
+            : [];
+
+        let g = null;
+
+        for(const p of pads){
+
+            if(p){
+
+                g = p;
+                break;
+
+            }
+
+        }
+
+        if(g){
+
+            const ax =
+                g.axes || [];
+
+            const x =
+                ax[0] || 0;
+
+            const y =
+                ax[1] || 0;
 
 
-x.font="8px monospace";
-
-x.fillText(
-"ROM:",
-80,
-62
-);
-
-x.fillText(
-"Super Mario Land.gb",
-80,
-75
-);
+            const left =
+                !!(
+                    g.buttons[14] &&
+                    g.buttons[14].pressed
+                ) ||
+                x < -0.35;
 
 
-x.fillText(
-"READY",
-80,
-105
-);
+            const right =
+                !!(
+                    g.buttons[15] &&
+                    g.buttons[15].pressed
+                ) ||
+                x > 0.35;
 
 
-x.textAlign="left";
+            const up =
+                !!(
+                    g.buttons[12] &&
+                    g.buttons[12].pressed
+                ) ||
+                y < -0.35;
 
 
-/*
-   Show current input state.
+            const down =
+                !!(
+                    g.buttons[13] &&
+                    g.buttons[13].pressed
+                ) ||
+                y > 0.35;
 
-   This is temporary and will disappear
-   when the emulator is connected.
-*/
 
-x.font="7px monospace";
+            if(left !== padState.left){
 
-x.fillText(
-"U "+gb.up+
-" D "+gb.down+
-" L "+gb.left+
-" R "+gb.right,
-15,
-120
-);
+                padState.left = left;
 
-x.fillText(
-"A "+gb.a+
-" B "+gb.b+
-" S "+gb.start+
-" T "+gb.select,
-15,
-130
-);
+                key("ArrowLeft",left);
+
+            }
+
+
+            if(right !== padState.right){
+
+                padState.right = right;
+
+                key("ArrowRight",right);
+
+            }
+
+
+            if(up !== padState.up){
+
+                padState.up = up;
+
+                key("ArrowUp",up);
+
+            }
+
+
+            if(down !== padState.down){
+
+                padState.down = down;
+
+                key("ArrowDown",down);
+
+            }
+
+        }
+
+    }catch(e){}
+
+    requestAnimationFrame(updatePad);
 
 }
 
 
-/* =========================================================
-   ROM LOADER
-========================================================= */
+/* --------------------------------------------------
+   LOAD ROM
+-------------------------------------------------- */
 
-async function loadROM(){
+async function loadGame(){
 
-romLoaded=0;
+    try{
 
-romError="";
-
-try{
-
-let response=await fetch(ROM_PATH);
-
-if(!response.ok){
-
-throw new Error(
-"HTTP "+response.status
-);
-
-}
-
-rom=await response.arrayBuffer();
-
-romLoaded=1;
-
-console.log(
-"ROM loaded:",
-ROM_PATH,
-rom.byteLength,
-"bytes"
-);
-
-}
-
-catch(e){
-
-rom=null;
-
-romLoaded=0;
-
-romError=String(e);
-
-console.log(
-"ROM loading failed:",
-e
-);
-
-}
-
-}
+        status.textContent =
+            "Loading Super Mario Land...";
 
 
-/* =========================================================
-   VIRTUAL BUTTON HELPER
-========================================================= */
-
-function virtualButton(element,name){
-
-function down(e){
-
-if(e){
-
-e.preventDefault();
-e.stopPropagation();
-
-}
-
-gb[name]=1;
-
-}
+        const response =
+            await fetch(
+                "roms/Super%20Mario%20Land.gb"
+            );
 
 
-function up(e){
+        if(!response.ok){
 
-if(e){
+            throw new Error(
+                "ROM not found (" +
+                response.status +
+                ")"
+            );
 
-e.preventDefault();
-e.stopPropagation();
-
-}
-
-gb[name]=0;
-
-}
+        }
 
 
-element.addEventListener(
-"pointerdown",
-down,
-{passive:false}
-);
-
-element.addEventListener(
-"pointerup",
-up,
-{passive:false}
-);
-
-element.addEventListener(
-"pointercancel",
-up,
-{passive:false}
-);
-
-element.addEventListener(
-"pointerleave",
-up,
-{passive:false}
-);
+        const rom =
+            await response.arrayBuffer();
 
 
-/*
-   Keep the click event blocked from doing
-   anything unexpected.
-*/
+        /*
+            Create REAL Game Boy emulator.
+        */
 
-element.addEventListener(
-"click",
-function(e){
+        gb =
+            new GameboyJS.Gameboy(canvas);
 
-e.preventDefault();
-e.stopPropagation();
 
-},
-{passive:false}
-);
+        /*
+            Find the ROM reader exposed
+            by gameboy.js.
+        */
+
+        if(gb.loadRom){
+
+            gb.loadRom(
+                new Uint8Array(rom)
+            );
+
+        }else if(gb.loadROM){
+
+            gb.loadROM(
+                new Uint8Array(rom)
+            );
+
+        }else{
+
+            /*
+                The original emulator normally
+                handles ROM loading through its
+                RomFileReader.
+
+                This message is intentional:
+                we don't fake a successful load.
+            */
+
+            throw new Error(
+                "ROM loader API not available"
+            );
+
+        }
+
+
+        status.textContent =
+            "Super Mario Land loaded!";
+
+
+        setTimeout(
+            function(){
+
+                status.style.display =
+                    "none";
+
+            },
+            2000
+        );
+
+
+    }catch(e){
+
+        console.error(e);
+
+        status.textContent =
+            "ERROR: " + e.message;
+
+    }
 
 }
 
 
-/* =========================================================
-   GAME BOY VIRTUAL BUTTONS
-========================================================= */
+/* --------------------------------------------------
+   BUTTONS
+-------------------------------------------------- */
 
-virtualButton(
-document.getElementById("up"),
-"up"
-);
+document.getElementById("reset")
+.onclick = function(){
 
-virtualButton(
-document.getElementById("down"),
-"down"
-);
-
-virtualButton(
-document.getElementById("left"),
-"left"
-);
-
-virtualButton(
-document.getElementById("right"),
-"right"
-);
-
-virtualButton(
-document.getElementById("aBtn"),
-"a"
-);
-
-virtualButton(
-document.getElementById("bBtn"),
-"b"
-);
-
-virtualButton(
-document.getElementById("startBtn"),
-"start"
-);
-
-virtualButton(
-document.getElementById("selectBtn"),
-"select"
-);
-
-
-/* =========================================================
-   KEYBOARD
-========================================================= */
-
-function gameKey(e){
-
-let z=e.key.toLowerCase();
-
-
-/*
-   Block browser actions.
-*/
-
-if(
-
-z==="arrowleft" ||
-z==="arrowright" ||
-z==="arrowup" ||
-z==="arrowdown" ||
-z===" " ||
-z==="z" ||
-z==="x" ||
-z==="enter" ||
-z==="shift"
-
-){
-
-e.preventDefault();
-
-}
-
-
-/*
-   Keyboard is useful for testing on PC.
-
-   It does NOT change the PS5 controller logic.
-*/
-
-if(
-z==="arrowleft" ||
-z==="a"
-)
-gb.left=1;
-
-
-if(
-z==="arrowright" ||
-z==="d"
-)
-gb.right=1;
-
-
-if(
-z==="arrowup" ||
-z==="w"
-)
-gb.up=1;
-
-
-if(
-z==="arrowdown" ||
-z==="s"
-)
-gb.down=1;
-
-
-if(z==="z")
-gb.b=1;
-
-
-if(z==="x")
-gb.a=1;
-
-
-if(z==="enter")
-gb.start=1;
-
-
-if(z==="shift")
-gb.select=1;
-
-
-/*
-   Escape = pause.
-*/
-
-if(z==="escape"){
-
-e.preventDefault();
-
-pause=!pause;
-
-}
-
-}
-
-
-function gameKeyUp(e){
-
-let z=e.key.toLowerCase();
-
-
-if(
-
-z==="arrowleft" ||
-z==="arrowright" ||
-z==="arrowup" ||
-z==="arrowdown" ||
-z===" " ||
-z==="z" ||
-z==="x" ||
-z==="enter" ||
-z==="shift"
-
-){
-
-e.preventDefault();
-
-}
-
-
-if(
-z==="arrowleft" ||
-z==="a"
-)
-gb.left=0;
-
-
-if(
-z==="arrowright" ||
-z==="d"
-)
-gb.right=0;
-
-
-if(
-z==="arrowup" ||
-z==="w"
-)
-gb.up=0;
-
-
-if(
-z==="arrowdown" ||
-z==="s"
-)
-gb.down=0;
-
-
-if(z==="z")
-gb.b=0;
-
-
-if(z==="x")
-gb.a=0;
-
-
-if(z==="enter")
-gb.start=0;
-
-
-if(z==="shift")
-gb.select=0;
-
-}
-
-
-document.addEventListener(
-"keydown",
-gameKey,
-{passive:false}
-);
-
-
-document.addEventListener(
-"keyup",
-gameKeyUp,
-{passive:false}
-);
-
-
-/* =========================================================
-   PAGE INPUT BLOCKING
-========================================================= */
-
-window.addEventListener(
-"wheel",
-function(e){
-
-e.preventDefault();
-
-},
-{passive:false}
-);
-
-
-window.addEventListener(
-"touchmove",
-function(e){
-
-e.preventDefault();
-
-},
-{passive:false}
-);
-
-
-/* =========================================================
-   TOP BUTTONS
-========================================================= */
-
-document.getElementById(
-"pause"
-).onclick=function(){
-
-pause=!pause;
+    location.reload();
 
 };
 
 
-document.getElementById(
-"reset"
-).onclick=function(){
+document.getElementById("pause")
+.onclick = function(){
 
-pause=0;
-
-gb.up=0;
-gb.down=0;
-gb.left=0;
-gb.right=0;
-
-gb.a=0;
-gb.b=0;
-
-gb.start=0;
-gb.select=0;
-
-loadROM();
+    /*
+       Keep this simple for the first test.
+       We will connect the emulator pause
+       properly after the ROM is confirmed.
+    */
 
 };
 
 
-document.getElementById(
-"sound"
-).onclick=function(){
-
-sound=!sound;
-
-this.textContent=
-sound
-?
-"SOUND ON"
-:
-"SOUND";
-
-};
-
-
-/* =========================================================
-   GAMEPAD
-========================================================= */
-
-function gp(){
-
-try{
-
-let pads=
-navigator.getGamepads
-?
-navigator.getGamepads()
-:
-[];
-
-let g=null;
-
-
-/*
-   Find the first connected controller.
-*/
-
-for(
-const z of pads
-){
-
-if(z){
-
-g=z;
-
-break;
-
-}
-
-}
-
-
-if(g){
-
-let ax=g.axes||[];
-
-
-/*
-   D-PAD
-
-   IMPORTANT:
-
-   This is the same working logic
-   from our original formula.
-*/
-
-
-gb.left=
-!!(
-g.buttons[14] &&
-g.buttons[14].pressed
-)
-||
-(ax[0]||0)<-.35;
-
-
-gb.right=
-!!(
-g.buttons[15] &&
-g.buttons[15].pressed
-)
-||
-(ax[0]||0)>.35;
-
-
-gb.up=
-!!(
-g.buttons[12] &&
-g.buttons[12].pressed
-)
-||
-(ax[1]||0)<-.35;
-
-
-gb.down=
-!!(
-g.buttons[13] &&
-g.buttons[13].pressed
-)
-||
-(ax[1]||0)>.35;
-
-
-/*
-   OPTIONS
-
-   Kept only for page pause.
-
-   It is NOT a Game Boy button.
-*/
-
-if(
-
-g.buttons[9] &&
-g.buttons[9].pressed &&
-!opt
-
-){
-
-pause=!pause;
-
-opt=1;
-
-}
-
-
-if(
-
-g.buttons[9] &&
-!g.buttons[9].pressed
-
-){
-
-opt=0;
-
-}
-
-}
-
-}
-
-catch(e){}
-
-
-/*
-   Keep polling continuously.
-*/
-
-requestAnimationFrame(gp);
-
-}
-
-
-/* =========================================================
-   GAME LOOP
-========================================================= */
-
-function loop(t){
-
-let dt=
-last
-?
-(t-last)/16.666
-:
-1;
-
-last=t;
-
-
-/*
-   The emulator update will be inserted here.
-*/
-
-if(!pause){
-
-/*
-   Temporary frame.
-*/
-
-}
-
-
-draw();
-
-requestAnimationFrame(loop);
-
-}
-
-
-/* =========================================================
+/* --------------------------------------------------
    START
-========================================================= */
+-------------------------------------------------- */
 
+requestAnimationFrame(updatePad);
 
-/*
-   Load:
-
-   roms/Super Mario Land.gb
-*/
-
-loadROM();
-
-
-/*
-   Start DualSense polling.
-*/
-
-requestAnimationFrame(gp);
-
-
-/*
-   Start rendering.
-*/
-
-requestAnimationFrame(loop);
-
-
-/*
-   Focus on the first visible control.
-
-   This keeps the same basic idea
-   as our original working formula.
-*/
-
-setTimeout(
-function(){
-
-try{
-
-document.getElementById(
-"up"
-).focus();
-
-}
-catch(e){}
-
-},
-300
-);
+loadGame();
 
 </script>
 
 </body>
-
 </html>
