@@ -112,7 +112,7 @@ transform:scale(.94);
 
 <div id="stage">
 
-<canvas id="c" width="320" height="160" tabindex="0"></canvas>
+<canvas id="c" width="160" height="144" tabindex="0"></canvas>
 
 </div>
 
@@ -137,8 +137,8 @@ JUMP
 const c=document.getElementById("c");
 const x=c.getContext("2d");
 
-const W=320;
-const H=160;
+const W=160;
+const H=144;
 
 x.imageSmoothingEnabled=false;
 
@@ -1011,11 +1011,6 @@ k.j=0;
 }
 
 
-/*
-   Clicking the visible JUMP button
-   performs a jump.
-*/
-
 jumpBtn.addEventListener(
 "pointerdown",
 jumpButton,
@@ -1037,12 +1032,6 @@ function gameKey(e){
 
 let z=e.key.toLowerCase();
 
-
-/*
-   IMPORTANT:
-   Stop browser scrolling/navigation
-   when these keys are used by the game.
-*/
 
 if(
 
