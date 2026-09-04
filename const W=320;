@@ -1,0 +1,1396 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+
+<title>Retro Land - PS5 Safari 17</title>
+
+<style>
+
+html,body{
+margin:0;
+width:100%;
+height:100%;
+overflow:hidden;
+background:#111;
+color:#e5efc8;
+font-family:Arial,sans-serif;
+touch-action:none;
+}
+
+#bar{
+height:50px;
+background:#1c2418;
+display:flex;
+align-items:center;
+justify-content:space-between;
+padding:0 12px;
+box-sizing:border-box;
+}
+
+button{
+background:#293426;
+color:#e5efc8;
+border:1px solid #607052;
+border-radius:6px;
+padding:7px 11px;
+font-weight:bold;
+}
+
+#stage{
+height:calc(100% - 80px);
+display:flex;
+align-items:center;
+justify-content:center;
+}
+
+canvas{
+width:min(100%,960px);
+height:auto;
+max-height:100%;
+image-rendering:pixelated;
+image-rendering:crisp-edges;
+background:#cbd99e;
+border:8px solid #20271d;
+box-sizing:border-box;
+}
+
+#hint{
+text-align:center;
+height:30px;
+font-size:12px;
+opacity:.8;
+padding-top:7px;
+box-sizing:border-box;
+}
+
+/* JUMP BUTTON */
+
+#jumpBtn{
+position:fixed;
+right:28px;
+bottom:48px;
+width:105px;
+height:65px;
+border-radius:50%;
+font-size:17px;
+background:#38482f;
+border:2px solid #91a978;
+color:#eef6d5;
+z-index:50;
+touch-action:none;
+-webkit-user-select:none;
+user-select:none;
+}
+
+#jumpBtn:focus{
+outline:3px solid #dce9b8;
+outline-offset:3px;
+}
+
+#jumpBtn:active{
+transform:scale(.94);
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="bar">
+
+<b>RETRO LAND — GAME BOY STYLE</b>
+
+<span>
+<button id="pause">PAUSE</button>
+<button id="reset">RESET</button>
+<button id="sound">SOUND</button>
+</span>
+
+</div>
+
+<div id="stage">
+
+<canvas id="c" width="160" height="144" tabindex="0"></canvas>
+
+</div>
+
+<div id="hint">
+DualSense: D-pad / Left Stick = Move · X = Jump · O = Dash · OPTIONS = Pause
+</div>
+
+<button id="jumpBtn" type="button">
+JUMP
+</button>
+
+
+<script>
+
+"use strict";
+
+
+/* =========================================================
+   GAME
+========================================================= */
+
+const c=document.getElementById("c");
+const x=c.getContext("2d");
+
+const W=160;
+const H=144;
+
+x.imageSmoothingEnabled=false;
+
+
+/* =========================================================
+   INPUT
+========================================================= */
+
+const k={
+l:0,
+r:0,
+j:0,
+d:0
+};
+
+let pause=0;
+let win=0;
+let sound=0;
+let last=0;
+let cam=0;
+let opt=0;
+
+
+/* =========================================================
+   PLAYER
+========================================================= */
+
+const p={
+x:20,
+y:110,
+w:12,
+h:16,
+vx:0,
+vy:0,
+g:0,
+face:1,
+coins:0,
+lives:3,
+_j:0,
+_d:0
+};
+
+
+/* =========================================================
+   LEVEL
+========================================================= */
+
+const solids=[
+
+[0,142,500,18],
+[540,142,330,18],
+[910,142,460,18],
+[1450,142,420,18],
+[1940,142,460,18],
+
+[180,116,48,8],
+[300,94,42,8],
+[610,112,50,8],
+[720,84,46,8],
+
+[1010,108,55,8],
+[1110,78,44,8],
+[1260,112,55,8],
+
+[1510,112,44,8],
+[1600,88,48,8],
+[1760,112,46,8],
+
+[2020,108,52,8],
+[2130,80,44,8],
+[2260,108,58,8]
+
+];
+
+
+const coins=[
+
+[195,104],
+[315,82],
+[625,100],
+[735,72],
+[1025,96],
+[1125,66],
+[1275,100],
+[1525,100],
+[1615,76],
+[1775,100],
+[2035,96],
+[2145,68],
+[2275,96],
+[455,125],
+[850,125],
+[1385,125],
+[1875,125]
+
+].map(q=>({
+
+x:q[0],
+y:q[1],
+got:0
+
+}));
+
+
+const foes=[
+
+[390,130,-.35],
+[670,100,.3],
+[1170,130,-.32],
+[1660,130,.34],
+[2190,130,-.35]
+
+].map(q=>({
+
+x:q[0],
+y:q[1],
+w:12,
+h:12,
+v:q[2],
+alive:1
+
+}));
+
+
+const goal={
+x:2350,
+y:112,
+w:18,
+h:30
+};
+
+
+let msg="";
+
+
+/* =========================================================
+   COLLISION
+========================================================= */
+
+function hit(a,b){
+
+return (
+
+a.x<b[0]+b[2] &&
+a.x+a.w>b[0] &&
+a.y<b[1]+b[3] &&
+a.y+a.h>b[1]
+
+);
+
+}
+
+
+/* =========================================================
+   SOUND
+========================================================= */
+
+function beep(f,t){
+
+if(!sound)return;
+
+try{
+
+window.ac=
+window.ac||
+new(window.AudioContext||window.webkitAudioContext)();
+
+let o=ac.createOscillator();
+let g=ac.createGain();
+
+o.frequency.value=f;
+o.type="square";
+
+g.gain.value=.035;
+
+o.connect(g);
+g.connect(ac.destination);
+
+o.start();
+
+g.gain.exponentialRampToValueAtTime(
+.0001,
+ac.currentTime+t
+);
+
+o.stop(ac.currentTime+t);
+
+}catch(e){}
+
+}
+
+
+/* =========================================================
+   RESET
+========================================================= */
+
+function reset(){
+
+p.x=20;
+p.y=110;
+
+p.vx=0;
+p.vy=0;
+
+p.coins=0;
+p.lives=3;
+
+coins.forEach(q=>q.got=0);
+
+foes.forEach(q=>q.alive=1);
+
+cam=0;
+win=0;
+msg="";
+pause=0;
+
+}
+
+
+/* =========================================================
+   UPDATE
+========================================================= */
+
+function update(dt){
+
+if(pause||win)return;
+
+
+/* gravity */
+
+p.vy+=.30*dt;
+
+
+/* movement */
+
+if(k.l){
+
+p.vx-=.42*dt;
+p.face=-1;
+
+}
+
+if(k.r){
+
+p.vx+=.42*dt;
+p.face=1;
+
+}
+
+p.vx*=Math.pow(.80,dt);
+
+p.vx=Math.max(
+-2.3,
+Math.min(2.3,p.vx)
+);
+
+
+/* jump */
+
+if(k.j&&!p._j){
+
+if(p.g){
+
+p.vy=-5.7;
+p.g=0;
+
+beep(620,.06);
+
+}
+
+p._j=1;
+
+}
+
+if(!k.j)
+p._j=0;
+
+
+/* dash */
+
+if(k.d&&!p._d){
+
+p.vx=p.face*3.8;
+
+beep(180,.05);
+
+p._d=1;
+
+}
+
+if(!k.d)
+p._d=0;
+
+
+/* horizontal collision */
+
+let nx=p.x+p.vx*dt;
+
+let ny=p.y+p.vy*dt;
+
+let t={
+x:nx,
+y:p.y,
+w:p.w,
+h:p.h
+};
+
+
+for(const q of solids){
+
+if(hit(t,q)){
+
+if(p.vx>0)
+nx=q[0]-p.w;
+
+else if(p.vx<0)
+nx=q[0]+q[2];
+
+p.vx=0;
+
+}
+
+}
+
+
+p.x=Math.max(
+0,
+Math.min(2388,nx)
+);
+
+
+/* vertical collision */
+
+t={
+x:p.x,
+y:ny,
+w:p.w,
+h:p.h
+};
+
+p.g=0;
+
+
+for(const q of solids){
+
+if(hit(t,q)){
+
+if(
+p.vy>=0 &&
+p.y+p.h<=q[1]+5
+){
+
+ny=q[1]-p.h;
+p.vy=0;
+p.g=1;
+
+}
+
+else if(
+p.vy<0 &&
+p.y>=q[1]+q[3]-4
+){
+
+ny=q[1]+q[3];
+p.vy=0;
+
+}
+
+}
+
+}
+
+
+p.y=ny;
+
+
+/* fall */
+
+if(p.y>185){
+
+p.lives--;
+
+if(p.lives<1){
+
+msg="GAME OVER - RESET";
+pause=1;
+
+}
+
+else{
+
+p.x=Math.max(
+20,
+p.x-150
+);
+
+p.y=100;
+p.vx=0;
+p.vy=0;
+
+}
+
+}
+
+
+/* coins */
+
+for(const q of coins){
+
+if(
+!q.got &&
+p.x<q.x+7 &&
+p.x+p.w>q.x &&
+p.y<q.y+7 &&
+p.y+p.h>q.y
+){
+
+q.got=1;
+p.coins++;
+
+beep(880,.05);
+
+}
+
+}
+
+
+/* enemies */
+
+for(const e of foes){
+
+if(!e.alive)
+continue;
+
+e.x+=e.v*dt;
+
+if(
+e.x<0 ||
+e.x>2388
+)
+e.v*=-1;
+
+
+let z=
+
+p.x<e.x+12 &&
+p.x+p.w>e.x &&
+p.y<e.y+12 &&
+p.y+p.h>e.y;
+
+
+if(z){
+
+if(
+p.vy>0 &&
+p.y+p.h<e.y+8
+){
+
+e.alive=0;
+p.vy=-3.8;
+
+beep(120,.08);
+
+}
+
+else{
+
+p.lives--;
+
+p.x=Math.max(
+20,
+p.x-120
+);
+
+p.y=100;
+p.vy=0;
+
+beep(70,.12);
+
+}
+
+}
+
+}
+
+
+/* goal */
+
+if(
+
+p.x+p.w>goal.x &&
+p.x<goal.x+goal.w &&
+p.y+p.h>goal.y
+
+){
+
+win=1;
+msg="STAGE CLEAR!";
+
+beep(1000,.18);
+
+}
+
+
+/* camera */
+
+cam=Math.max(
+0,
+Math.min(2080,p.x-105)
+);
+
+}
+
+
+/* =========================================================
+   DRAW
+========================================================= */
+
+function draw(){
+
+x.fillStyle="#cbd99e";
+
+x.fillRect(
+0,
+0,
+W,
+H
+);
+
+x.save();
+
+x.translate(
+-cam,
+0
+);
+
+
+/* sky */
+
+x.fillStyle="#a9bb7b";
+
+for(
+let q=0;
+q<2400;
+q+=80
+){
+
+x.fillRect(
+q,
+40+(q%3)*4,
+24,
+2
+);
+
+x.fillRect(
+q+8,
+36+(q%3)*4,
+6,
+2
+);
+
+}
+
+
+/* hills */
+
+x.fillStyle="#9cad72";
+
+for(
+let q=-40;
+q<2400;
+q+=90
+){
+
+x.beginPath();
+
+x.moveTo(q,142);
+x.lineTo(q+40,96);
+x.lineTo(q+80,142);
+
+x.fill();
+
+}
+
+
+/* platforms */
+
+for(const q of solids){
+
+x.fillStyle="#26321f";
+
+x.fillRect(
+q[0],
+q[1],
+q[2],
+q[3]
+);
+
+x.fillStyle="#657653";
+
+x.fillRect(
+q[0],
+q[1],
+q[2],
+3
+);
+
+}
+
+
+/* coins */
+
+for(const q of coins){
+
+if(!q.got){
+
+x.fillStyle="#26321f";
+
+x.fillRect(
+q.x+2,
+q.y,
+3,
+7
+);
+
+x.fillRect(
+q.x,
+q.y+2,
+7,
+3
+);
+
+x.fillStyle="#eef3c7";
+
+x.fillRect(
+q.x+2,
+q.y+1,
+3,
+5
+);
+
+}
+
+}
+
+
+/* enemies */
+
+for(const e of foes){
+
+if(e.alive){
+
+x.fillStyle="#26321f";
+
+x.fillRect(
+e.x,
+e.y+3,
+12,
+8
+);
+
+x.fillRect(
+e.x+2,
+e.y,
+8,
+3
+);
+
+x.fillStyle="#dce8b8";
+
+x.fillRect(
+e.x+2,
+e.y+5,
+2,
+2
+);
+
+x.fillRect(
+e.x+8,
+e.y+5,
+2,
+2
+);
+
+}
+
+}
+
+
+/* goal */
+
+x.fillStyle="#26321f";
+
+x.fillRect(
+goal.x,
+goal.y,
+3,
+30
+);
+
+x.fillRect(
+goal.x+3,
+goal.y,
+15,
+10
+);
+
+x.fillStyle="#c9d79d";
+
+x.fillRect(
+goal.x+6,
+goal.y+3,
+9,
+4
+);
+
+
+/* player */
+
+x.fillStyle="#1d281a";
+
+x.fillRect(
+p.x+3,
+p.y,
+7,
+3
+);
+
+x.fillRect(
+p.x+1,
+p.y+3,
+10,
+5
+);
+
+x.fillRect(
+p.x+3,
+p.y+8,
+7,
+5
+);
+
+x.fillRect(
+p.x,
+p.y+13,
+5,
+3
+);
+
+x.fillRect(
+p.x+8,
+p.y+13,
+5,
+3
+);
+
+x.fillStyle="#dce8b8";
+
+x.fillRect(
+p.x+4,
+p.y+4,
+5,
+2
+);
+
+
+x.restore();
+
+
+/* HUD */
+
+x.fillStyle="#1d281a";
+
+x.fillRect(
+0,
+0,
+W,
+16
+);
+
+x.fillStyle="#e5efc8";
+
+x.font="8px monospace";
+
+x.fillText(
+"RETRO LAND",
+5,
+10
+);
+
+x.fillText(
+"COINS "+
+String(p.coins).padStart(2,"0"),
+85,
+10
+);
+
+x.fillText(
+"LIVES "+p.lives,
+150,
+10
+);
+
+x.fillText(
+"WORLD 1-1",
+205,
+10
+);
+
+
+/* message */
+
+if(msg){
+
+x.fillStyle="rgba(20,28,17,.88)";
+
+x.fillRect(
+60,
+63,
+200,
+34
+);
+
+x.fillStyle="#e5efc8";
+
+x.font="bold 12px monospace";
+
+x.textAlign="center";
+
+x.fillText(
+msg,
+160,
+84
+);
+
+x.textAlign="left";
+
+}
+
+}
+
+
+/* =========================================================
+   JUMP BUTTON
+========================================================= */
+
+const jumpBtn=
+document.getElementById("jumpBtn");
+
+
+function jumpButton(e){
+
+if(e){
+
+e.preventDefault();
+
+e.stopPropagation();
+
+}
+
+k.j=1;
+
+setTimeout(
+function(){
+k.j=0;
+},
+100
+);
+
+}
+
+
+jumpBtn.addEventListener(
+"pointerdown",
+jumpButton,
+{passive:false}
+);
+
+jumpBtn.addEventListener(
+"click",
+jumpButton,
+{passive:false}
+);
+
+
+/* =========================================================
+   KEYBOARD
+========================================================= */
+
+function gameKey(e){
+
+let z=e.key.toLowerCase();
+
+
+if(
+
+z==="arrowleft" ||
+z==="arrowright" ||
+z==="arrowup" ||
+z==="arrowdown" ||
+z===" " ||
+z==="a" ||
+z==="d" ||
+z==="w" ||
+z==="z" ||
+z==="x" ||
+z==="shift"
+
+){
+
+e.preventDefault();
+
+}
+
+
+if(
+z==="arrowleft" ||
+z==="a"
+)
+k.l=1;
+
+
+if(
+z==="arrowright" ||
+z==="d"
+)
+k.r=1;
+
+
+if(
+z==="arrowup" ||
+z==="w" ||
+z===" "
+)
+k.j=1;
+
+
+if(
+z==="z" ||
+z==="x" ||
+z==="shift"
+)
+k.d=1;
+
+
+if(z==="escape"){
+
+e.preventDefault();
+
+pause=!pause;
+
+}
+
+}
+
+
+function gameKeyUp(e){
+
+let z=e.key.toLowerCase();
+
+
+if(
+
+z==="arrowleft" ||
+z==="arrowright" ||
+z==="arrowup" ||
+z==="arrowdown" ||
+z===" " ||
+z==="a" ||
+z==="d" ||
+z==="w" ||
+z==="z" ||
+z==="x" ||
+z==="shift"
+
+){
+
+e.preventDefault();
+
+}
+
+
+if(
+z==="arrowleft" ||
+z==="a"
+)
+k.l=0;
+
+
+if(
+z==="arrowright" ||
+z==="d"
+)
+k.r=0;
+
+
+if(
+z==="arrowup" ||
+z==="w" ||
+z===" "
+)
+k.j=0;
+
+
+if(
+z==="z" ||
+z==="x" ||
+z==="shift"
+)
+k.d=0;
+
+}
+
+
+document.addEventListener(
+"keydown",
+gameKey,
+{passive:false}
+);
+
+document.addEventListener(
+"keyup",
+gameKeyUp,
+{passive:false}
+);
+
+
+/* =========================================================
+   PAGE INPUT BLOCKING
+========================================================= */
+
+window.addEventListener(
+"wheel",
+function(e){
+e.preventDefault();
+},
+{passive:false}
+);
+
+window.addEventListener(
+"touchmove",
+function(e){
+e.preventDefault();
+},
+{passive:false}
+);
+
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+
+const pauseBtn=()=>pause=!pause;
+
+document.getElementById(
+"pause"
+).onclick=pauseBtn;
+
+
+document.getElementById(
+"reset"
+).onclick=reset;
+
+
+document.getElementById(
+"sound"
+).onclick=function(){
+
+sound=!sound;
+
+document.getElementById(
+"sound"
+).textContent=
+sound ? "SOUND ON" : "SOUND";
+
+if(sound)
+beep(700,.05);
+
+};
+
+
+/* =========================================================
+   GAMEPAD
+========================================================= */
+
+function gp(){
+
+try{
+
+let pads=
+navigator.getGamepads
+?
+navigator.getGamepads()
+:
+[];
+
+let g=null;
+
+
+for(
+const z of pads
+){
+
+if(z){
+
+g=z;
+break;
+
+}
+
+}
+
+
+if(g){
+
+let ax=g.axes||[];
+
+
+/*
+   D-PAD
+*/
+
+k.l=
+!!(
+g.buttons[14] &&
+g.buttons[14].pressed
+)
+||
+(ax[0]||0)<-.35;
+
+
+k.r=
+!!(
+g.buttons[15] &&
+g.buttons[15].pressed
+)
+||
+(ax[0]||0)>.35;
+
+
+/*
+   X button
+   Standard Gamepad button 0
+*/
+
+k.j=!!(
+g.buttons[0] &&
+g.buttons[0].pressed
+);
+
+
+/*
+   O button
+   Standard Gamepad button 1
+*/
+
+k.d=!!(
+g.buttons[1] &&
+g.buttons[1].pressed
+);
+
+
+/*
+   OPTIONS
+*/
+
+if(
+
+g.buttons[9] &&
+g.buttons[9].pressed &&
+!opt
+
+){
+
+pause=!pause;
+
+opt=1;
+
+}
+
+if(
+
+g.buttons[9] &&
+!g.buttons[9].pressed
+
+){
+
+opt=0;
+
+}
+
+}
+
+}
+catch(e){}
+
+
+requestAnimationFrame(gp);
+
+}
+
+
+/* =========================================================
+   GAME LOOP
+========================================================= */
+
+function loop(t){
+
+let dt=
+last
+?
+(t-last)/16.666
+:
+1;
+
+last=t;
+
+update(
+Math.min(2,dt)
+);
+
+draw();
+
+requestAnimationFrame(loop);
+
+}
+
+
+/* START */
+
+requestAnimationFrame(gp);
+
+requestAnimationFrame(loop);
+
+
+/*
+   Put focus on the JUMP button after loading.
+   This gives the PS5 browser a clear selectable target.
+*/
+
+setTimeout(
+function(){
+
+try{
+jumpBtn.focus();
+}catch(e){}
+
+},
+300
+);
+
+</script>
+
+</body>
+</html>
