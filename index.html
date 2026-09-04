@@ -3123,6 +3123,33 @@ function gbRead(addr){
 
 addr&=0xFFFF;
 
+   /*
+   Timer registers
+*/
+
+if(addr===0xFF04){
+
+  return (gbTimer.div>>8)&0xFF;
+
+}
+
+if(addr===0xFF05){
+
+  return gbTimer.tima;
+
+}
+
+if(addr===0xFF06){
+
+  return gbTimer.tma;
+
+}
+
+if(addr===0xFF07){
+
+  return gbTimer.tac|0xF8;
+
+}
 
 /*
    Cartridge ROM
