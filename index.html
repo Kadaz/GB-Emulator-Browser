@@ -2919,7 +2919,53 @@ const gbTimer={
   tac:0,
   counter:0
 };
+function gbTimerStep(cycles){
 
+  gbTimer.div=
+    (gbTimer.div + cycles) & 0xFFFF;
+
+
+  if(!(gbTimer.tac & 0x04))
+    return;
+
+
+  gbTimer.counter+=cycles;
+
+
+  const frequencies=[
+    1024,
+    16,
+    64,
+    256
+  ];
+
+
+  const threshold=
+    frequencies[gbTimer.tac & 0x03];
+
+
+  while(gbTimer.counter>=threshold){
+
+    gbTimer.counter-=threshold;
+
+
+    if(gbTimer.tima===0xFF){
+
+      gbTimer.tima=gbTimer.tma;
+
+      gbMemory[0xFF0F]|=0x04;
+
+    }
+    else{
+
+      gbTimer.tima++;
+
+    }
+
+  }
+
+}
+   
 /* =========================================================
    GAME BOY CARTRIDGE
 ========================================================= */
