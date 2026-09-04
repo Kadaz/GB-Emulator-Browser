@@ -1673,6 +1673,105 @@ return 4;
 const gbCPU=new GBCPU();
 
 gbCPU.mem=new Uint8Array(0x10000);
+   /* =========================================================
+   GAME BOY MEMORY + ROM LOADER — STEP 3
+========================================================= */
+
+const GB_ROM_PATH="roms/Super Mario Land.gb";
+
+let gbROM=null;
+let gbROMLoaded=false;
+
+
+/* ---------------------------------------------------------
+   LOAD ROM
+--------------------------------------------------------- */
+
+async function loadGBROM(){
+
+try{
+
+const response=await fetch(
+GB_ROM_PATH,
+{
+cache:"no-store"
+}
+);
+
+if(!response.ok){
+
+throw new Error(
+"HTTP "+response.status
+);
+
+}
+
+
+const buffer=await response.arrayBuffer();
+
+gbROM=new Uint8Array(buffer);
+
+
+/*
+   Game Boy cartridges normally start with
+   executable code at $0100.
+*/
+
+const copySize=Math.min(
+gbROM.length,
+0x8000
+);
+
+for(
+let i=0;
+i<copySize;
+i++
+){
+
+gbCPU.mem[i]=gbROM[i];
+
+}
+
+
+gbROMLoaded=true;
+
+console.log(
+"Game Boy ROM loaded:",
+GB_ROM_PATH
+);
+
+console.log(
+"ROM size:",
+gbROM.length,
+"bytes"
+);
+
+console.log(
+"Entry point:",
+gbCPU.mem[0x0100].toString(16)
+);
+
+
+}
+catch(e){
+
+gbROMLoaded=false;
+
+console.error(
+"Game Boy ROM loading failed:",
+e
+);
+
+}
+
+}
+
+
+/* ---------------------------------------------------------
+   START ROM LOADING
+--------------------------------------------------------- */
+
+loadGBROM();
 
 
 /* =========================================================
