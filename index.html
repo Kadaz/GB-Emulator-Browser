@@ -3148,6 +3148,26 @@ if(addr===0xFF06){
 if(addr===0xFF07){
 
   return gbTimer.tac|0xF8;
+   /*
+   Interrupt Flag
+*/
+
+if(addr===0xFF0F){
+
+  return gbMemory[0xFF0F];
+
+}
+
+
+/*
+   Interrupt Enable
+*/
+
+if(addr===0xFFFF){
+
+  return gbMemory[0xFFFF];
+
+}
 
 }
 
