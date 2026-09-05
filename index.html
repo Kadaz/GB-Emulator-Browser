@@ -3632,14 +3632,20 @@ let gbCPUCycles=0;
 
 function gbCPUTest(){
 
-  if(!gbROMLoaded)
+  if(!gbROMLoaded){
+
+    requestAnimationFrame(gbCPUTest);
+
     return;
+
+  }
 
 
   if(gbCPU.halted || gbCPU.stopped){
 
     console.log(
       "Game Boy CPU STOPPED:",
+
       "PC=0x"+
       gbCPU.pc
         .toString(16)
@@ -3656,14 +3662,59 @@ function gbCPUTest(){
     );
 
     return;
+
   }
 
 
-  const cycles=gbCPU.step();
+  /*
+     Execute many CPU instructions per frame.
 
-  gbTimerStep(cycles);
+     This makes the CPU test much faster
+     than executing only one instruction
+     per animation frame.
+  */
 
-  gbCPUCycles+=cycles;
+  for(let i=0;i<1000;i++){
+
+    if(gbCPU.halted || gbCPU.stopped)
+      break;
+
+    const cycles=gbCPU.step();
+
+    gbTimerStep(cycles);
+
+    gbCPUCycles+=cycles;
+
+
+    if(gbCPUCycles>=100000)
+      break;
+
+  }
+
+
+  if(gbCPU.halted || gbCPU.stopped){
+
+    console.log(
+      "Game Boy CPU STOPPED:",
+
+      "PC=0x"+
+      gbCPU.pc
+        .toString(16)
+        .padStart(4,"0"),
+
+      "HALTED:",
+      gbCPU.halted,
+
+      "STOPPED:",
+      gbCPU.stopped,
+
+      "Cycles:",
+      gbCPUCycles
+    );
+
+    return;
+
+  }
 
 
   if(gbCPUCycles>=100000){
@@ -3701,10 +3752,12 @@ function gbCPUTest(){
     );
 
     return;
+
   }
 
 
   requestAnimationFrame(gbCPUTest);
+
 }
 
 
