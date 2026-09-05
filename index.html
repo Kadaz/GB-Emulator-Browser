@@ -3204,6 +3204,9 @@ if(addr===0xFF0F){
       if(addr===0xFF43){
   return gbPPU.scx;
 }
+      if(addr===0xFF44){
+  return 0;
+}
 }
 
   return gbMemory[0xFF0F];
