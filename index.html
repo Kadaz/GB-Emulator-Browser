@@ -3635,47 +3635,36 @@ function gbCPUTest(){
   if(!gbROMLoaded)
     return;
 
+
   if(gbCPU.halted || gbCPU.stopped){
 
-  console.log(
-    "Game Boy CPU STEP 7 STOP:",
-    "PC=0x"+
-    gbCPU.pc
-      .toString(16)
-      .padStart(4,"0"),
+    console.log(
+      "Game Boy CPU STEP 7 STOP:",
+      "PC=0x"+
+      gbCPU.pc
+        .toString(16)
+        .padStart(4,"0"),
 
-    "HALTED:",
-    gbCPU.halted,
+      "HALTED:",
+      gbCPU.halted,
 
-    "STOPPED:",
-    gbCPU.stopped,
+      "STOPPED:",
+      gbCPU.stopped,
 
-    "Cycles:",
-    gbCPUCycles
-  );
+      "Cycles:",
+      gbCPUCycles
+    );
 
-  return;
-}
+    return;
+  }
+
 
   const cycles=gbCPU.step();
 
   gbTimerStep(cycles);
 
   gbCPUCycles+=cycles;
-   console.log(
-  "CPU instruction:",
-  "PC=0x"+
-  ((gbCPU.pc-1)&0xFFFF)
-    .toString(16)
-    .padStart(4,"0"),
-  "Cycles:",
-  cycles
-);
 
-  /*
-     Stop after a small number of instructions
-     for the first CPU test.
-  */
 
   if(gbCPUCycles>=100000){
 
@@ -3683,31 +3672,35 @@ function gbCPUTest(){
       "Game Boy CPU STEP 7:",
       "PC=0x"+
       gbCPU.pc
-      .toString(16)
-      .padStart(4,"0"),
+        .toString(16)
+        .padStart(4,"0"),
 
       "A=0x"+
       gbCPU.a
-      .toString(16)
-      .padStart(2,"0"),
+        .toString(16)
+        .padStart(2,"0"),
 
       "HL=0x"+
       gbCPU.hl
-      .toString(16)
-      .padStart(4,"0"),
+        .toString(16)
+        .padStart(4,"0"),
 
       "Cycles:",
       gbCPUCycles
     );
 
     return;
-
   }
+
 
   requestAnimationFrame(gbCPUTest);
 
 }
+
+
 console.log("Game Boy CPU TEST STARTING...");
+
+
 setTimeout(
   gbCPUTest,
   500
