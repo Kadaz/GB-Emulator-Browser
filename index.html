@@ -2878,7 +2878,30 @@ return 4;
 /* =========================================================
    UNKNOWN OPCODE
 ========================================================= */
+case 0xE0:{
 
+  const offset=this.fetch8();
+
+  this.write(
+    0xFF00+offset,
+    this.a
+  );
+
+  return 12;
+
+}
+
+case 0xF0:{
+
+  const offset=this.fetch8();
+
+  this.a=this.read(
+    0xFF00+offset
+  );
+
+  return 12;
+
+}
 default:
 
 console.warn(
