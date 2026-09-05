@@ -3730,6 +3730,10 @@ gbCPU.pc===0x0101
 :
 "ERROR"
 );
+   console.log(
+  "Game Boy Timer test:",
+  gbRead(0xFF04) === 0 ? "OK" : "ERROR"
+);
 </script>
 
 </body>
