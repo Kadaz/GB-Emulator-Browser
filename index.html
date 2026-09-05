@@ -3635,8 +3635,27 @@ function gbCPUTest(){
   if(!gbROMLoaded)
     return;
 
-  if(gbCPU.halted || gbCPU.stopped)
-    return;
+  if(gbCPU.halted || gbCPU.stopped){
+
+  console.log(
+    "Game Boy CPU STEP 7 STOP:",
+    "PC=0x"+
+    gbCPU.pc
+      .toString(16)
+      .padStart(4,"0"),
+
+    "HALTED:",
+    gbCPU.halted,
+
+    "STOPPED:",
+    gbCPU.stopped,
+
+    "Cycles:",
+    gbCPUCycles
+  );
+
+  return;
+}
 
   const cycles=gbCPU.step();
 
