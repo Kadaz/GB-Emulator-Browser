@@ -3145,12 +3145,33 @@ if(addr===0xFF06){
 
 }
 
-if(addr===0xFF07){
+iif(addr===0xFF07){
 
   return gbTimer.tac|0xF8;
-   /*
+
+}
+
+
+/*
    Interrupt Flag
 */
+
+if(addr===0xFF0F){
+
+  return gbMemory[0xFF0F];
+
+}
+
+
+/*
+   Interrupt Enable
+*/
+
+if(addr===0xFFFF){
+
+  return gbMemory[0xFFFF];
+
+}
 
 if(addr===0xFF0F){
 
@@ -3603,12 +3624,6 @@ e
 
 loadGBROM();
 
-/* ---------------------------------------------------------
-   LOAD ROM
---------------------------------------------------------- */
-
-async function loadGBROM(){
-
 try{
 
 const response=await fetch(
@@ -3685,42 +3700,6 @@ e
 }
 
 }
-
-
-/* ---------------------------------------------------------
-   START ROM LOADING
---------------------------------------------------------- */
-
-loadGBROM();
-
-
-/* =========================================================
-   CPU TEST
-========================================================= */
-
-/*
-   Game Boy starts execution at $0100.
-
-   Put a NOP there and execute one instruction.
-*/
-
-gbCPU.mem[0x0100]=0x00;
-
-gbCPU.step();
-
-
-/*
-   CPU is alive if PC advanced from $0100 to $0101.
-*/
-
-console.log(
-"Game Boy CPU STEP 2:",
-gbCPU.pc===0x0101
-?
-"OK"
-:
-"ERROR"
-);
    console.log(
   "Game Boy Timer test:",
   gbRead(0xFF04) === 0 ? "OK" : "ERROR"
