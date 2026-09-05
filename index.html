@@ -2931,6 +2931,7 @@ return 4;
 ========================================================= */
 
 const gbMemory=new Uint8Array(0x10000);
+   const gbVRAM=new Uint8Array(0x2000);
 /* =========================================================
    GAME BOY TIMER
 ========================================================= */
@@ -3150,7 +3151,9 @@ addr&=0xFFFF;
 /*
    Timer registers
 */
-
+if(addr>=0x8000 && addr<=0x9FFF){
+  return gbVRAM[addr-0x8000];
+}
 if(addr===0xFF04){
 
   return (gbTimer.div>>8)&0xFF;
