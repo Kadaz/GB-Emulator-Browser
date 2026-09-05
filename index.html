@@ -3123,7 +3123,8 @@ function gbRead(addr){
 
 addr&=0xFFFF;
 
-   /*
+
+/*
    Timer registers
 */
 
@@ -3145,7 +3146,7 @@ if(addr===0xFF06){
 
 }
 
-iif(addr===0xFF07){
+if(addr===0xFF07){
 
   return gbTimer.tac|0xF8;
 
@@ -3173,24 +3174,6 @@ if(addr===0xFFFF){
 
 }
 
-if(addr===0xFF0F){
-
-  return gbMemory[0xFF0F];
-
-}
-
-
-/*
-   Interrupt Enable
-*/
-
-if(addr===0xFFFF){
-
-  return gbMemory[0xFFFF];
-
-}
-
-}
 
 /*
    Cartridge ROM
@@ -3198,7 +3181,7 @@ if(addr===0xFFFF){
 
 if(addr<0x8000){
 
-return gbReadROM(addr);
+  return gbReadROM(addr);
 
 }
 
@@ -3212,13 +3195,13 @@ addr>=0xA000 &&
 addr<0xC000
 ){
 
-if(!gbCartridge.ramEnabled)
-return 0xFF;
+  if(!gbCartridge.ramEnabled)
+    return 0xFF;
 
-return gbCartridge.ram[
-gbCartridge.ramBank*0x2000+
-(addr-0xA000)
-];
+  return gbCartridge.ram[
+    gbCartridge.ramBank*0x2000+
+    (addr-0xA000)
+  ];
 
 }
 
@@ -3235,9 +3218,9 @@ addr>=0xE000 &&
 addr<0xFE00
 ){
 
-return gbMemory[
-addr-0x2000
-];
+  return gbMemory[
+    addr-0x2000
+  ];
 
 }
 
@@ -3251,7 +3234,7 @@ addr>=0xFEA0 &&
 addr<0xFF00
 ){
 
-return 0xFF;
+  return 0xFF;
 
 }
 
@@ -3263,11 +3246,6 @@ return 0xFF;
 return gbMemory[addr];
 
 }
-
-
-/* =========================================================
-   MEMORY WRITE
-========================================================= */
 
 function gbWrite(addr,value){
    
@@ -3624,86 +3602,6 @@ e
 
 loadGBROM();
 
-try{
-
-const response=await fetch(
-GB_ROM_PATH,
-{
-cache:"no-store"
-}
-);
-
-if(!response.ok){
-
-throw new Error(
-"HTTP "+response.status
-);
-
-}
-
-
-const buffer=await response.arrayBuffer();
-
-gbROM=new Uint8Array(buffer);
-
-
-/*
-   Game Boy cartridges normally start with
-   executable code at $0100.
-*/
-
-const copySize=Math.min(
-gbROM.length,
-0x8000
-);
-
-for(
-let i=0;
-i<copySize;
-i++
-){
-
-gbCPU.mem[i]=gbROM[i];
-
-}
-
-
-gbROMLoaded=true;
-
-console.log(
-"Game Boy ROM loaded:",
-GB_ROM_PATH
-);
-
-console.log(
-"ROM size:",
-gbROM.length,
-"bytes"
-);
-
-console.log(
-"Entry point:",
-gbCPU.mem[0x0100].toString(16)
-);
-
-
-}
-catch(e){
-
-gbROMLoaded=false;
-
-console.error(
-"Game Boy ROM loading failed:",
-e
-);
-
-}
-
-}
-   console.log(
-  "Game Boy Timer test:",
-  gbRead(0xFF04) === 0 ? "OK" : "ERROR"
-);
 </script>
 
 </body>
