@@ -2935,8 +2935,9 @@ const gbMemory=new Uint8Array(0x10000);
    const gbOAM=new Uint8Array(0xA0);
    const gbPPU={
   lcdc:0x91,
-  stat:0x85
-      scy:0x00
+  stat:0x85,
+  scy:0x00,
+  scx:0x00
 };
 /* =========================================================
    GAME BOY TIMER
@@ -3199,6 +3200,9 @@ if(addr===0xFF0F){
 }
       if(addr===0xFF42){
   return gbPPU.scy;
+}
+      if(addr===0xFF43){
+  return gbPPU.scx;
 }
 }
 
