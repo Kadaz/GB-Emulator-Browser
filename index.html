@@ -3625,7 +3625,7 @@ e
 
 loadGBROM();
 /* =========================================================
-   GAME BOY CPU TEST — STEP 7
+   GAME BOY CPU TEST — STEP 8
 ========================================================= */
 
 let gbCPUCycles=0;
@@ -3639,7 +3639,7 @@ function gbCPUTest(){
   if(gbCPU.halted || gbCPU.stopped){
 
     console.log(
-      "Game Boy CPU STEP 7 STOP:",
+      "Game Boy CPU STOPPED:",
       "PC=0x"+
       gbCPU.pc
         .toString(16)
@@ -3669,7 +3669,8 @@ function gbCPUTest(){
   if(gbCPUCycles>=100000){
 
     console.log(
-      "Game Boy CPU STEP 7:",
+      "Game Boy CPU STEP 8 COMPLETE:",
+
       "PC=0x"+
       gbCPU.pc
         .toString(16)
@@ -3679,6 +3680,16 @@ function gbCPUTest(){
       gbCPU.a
         .toString(16)
         .padStart(2,"0"),
+
+      "BC=0x"+
+      gbCPU.bc
+        .toString(16)
+        .padStart(4,"0"),
+
+      "DE=0x"+
+      gbCPU.de
+        .toString(16)
+        .padStart(4,"0"),
 
       "HL=0x"+
       gbCPU.hl
@@ -3694,11 +3705,12 @@ function gbCPUTest(){
 
 
   requestAnimationFrame(gbCPUTest);
-
 }
 
 
-console.log("Game Boy CPU TEST STARTING...");
+console.log(
+  "Game Boy CPU STEP 8 STARTING..."
+);
 
 
 setTimeout(
