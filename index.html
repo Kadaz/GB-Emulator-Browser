@@ -3249,6 +3249,7 @@ return gbMemory[addr];
 ========================================================= */
 
 function gbWrite(addr,value){
+   
 
 addr&=0xFFFF;
 value&=0xFF;
@@ -3283,6 +3284,30 @@ if(addr===0xFF06){
 if(addr===0xFF07){
 
   gbTimer.tac=value&0x07;
+
+  return;
+
+}
+   /*
+   Interrupt Flag
+*/
+
+if(addr===0xFF0F){
+
+  gbMemory[0xFF0F]=value;
+
+  return;
+
+}
+
+
+/*
+   Interrupt Enable
+*/
+
+if(addr===0xFFFF){
+
+  gbMemory[0xFFFF]=value;
 
   return;
 
