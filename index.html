@@ -3601,7 +3601,66 @@ e
 
 
 loadGBROM();
+/* =========================================================
+   GAME BOY CPU TEST — STEP 7
+========================================================= */
 
+let gbCPUCycles=0;
+
+function gbCPUTest(){
+
+  if(!gbROMLoaded)
+    return;
+
+  if(gbCPU.halted || gbCPU.stopped)
+    return;
+
+  const cycles=gbCPU.step();
+
+  gbTimerStep(cycles);
+
+  gbCPUCycles+=cycles;
+
+  /*
+     Stop after a small number of instructions
+     for the first CPU test.
+  */
+
+  if(gbCPUCycles>=100000){
+
+    console.log(
+      "Game Boy CPU STEP 7:",
+      "PC=0x"+
+      gbCPU.pc
+      .toString(16)
+      .padStart(4,"0"),
+
+      "A=0x"+
+      gbCPU.a
+      .toString(16)
+      .padStart(2,"0"),
+
+      "HL=0x"+
+      gbCPU.hl
+      .toString(16)
+      .padStart(4,"0"),
+
+      "Cycles:",
+      gbCPUCycles
+    );
+
+    return;
+
+  }
+
+  requestAnimationFrame(gbCPUTest);
+
+}
+
+setTimeout(
+  gbCPUTest,
+  500
+);
 </script>
 
 </body>
