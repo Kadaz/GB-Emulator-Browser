@@ -3421,7 +3421,15 @@ value&=0xFF;
    /*
    Timer registers
 */
+if(addr>=0x8000 && addr<=0x9FFF){
+  gbVRAM[addr-0x8000]=value;
+  return;
+}
 
+if(addr>=0xFE00 && addr<=0xFE9F){
+  gbOAM[addr-0xFE00]=value;
+  return;
+}
 if(addr===0xFF04){
 
   gbTimer.div=0;
