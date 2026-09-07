@@ -1389,7 +1389,24 @@ if(gbROMLoaded){
 
     cycles+=used;
 
-  }
+}
+
+
+console.log(
+  "GB FRAME:",
+  "PC=0x"+
+  gbCPU.pc.toString(16).padStart(4,"0"),
+  "A=0x"+
+  gbCPU.a.toString(16).padStart(2,"0"),
+  "BC=0x"+
+  gbCPU.bc.toString(16).padStart(4,"0"),
+  "DE=0x"+
+  gbCPU.de.toString(16).padStart(4,"0"),
+  "HL=0x"+
+  gbCPU.hl.toString(16).padStart(4,"0"),
+  "VRAM[8000]="+
+  gbRead(0x8000).toString(16).padStart(2,"0")
+);
 
 
   /* =======================================================
