@@ -2940,9 +2940,7 @@ const gbMemory=new Uint8Array(0x10000);
   scx:0x00,
   lyc:0x00,
   bgp:0xFC
-};
-   function gbPPUDrawTest(){
-      function gbPPUDrawBackground(){
+};function gbPPUDrawBackground(){
 
   const ctx=c.getContext("2d");
   const image=ctx.createImageData(160,144);
@@ -2989,45 +2987,12 @@ const gbMemory=new Uint8Array(0x10000);
         0
       ][color];
 
-      const i=(y*160+x)*4;
+      const i=
+        (y*160+x)*4;
 
       image.data[i]=shade;
       image.data[i+1]=shade;
       image.data[i+2]=shade;
-      image.data[i+3]=255;
-
-    }
-
-  }
-
-  ctx.putImageData(image,0,0);
-
-}
-      gbPPUDrawBackground();
-
-  const ctx=c.getContext("2d");
-
-  const image=ctx.createImageData(160,144);
-
-  for(let y=0;y<144;y++){
-
-    for(let x=0;x<160;x++){
-
-      const i=(y*160+x)*4;
-
-      const shade=
-        ((x>>3)+(y>>3))&3;
-
-      const value=[
-        255,
-        192,
-        96,
-        0
-      ][shade];
-
-      image.data[i]=value;
-      image.data[i+1]=value;
-      image.data[i+2]=value;
       image.data[i+3]=255;
 
     }
