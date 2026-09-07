@@ -3003,8 +3003,11 @@ const gbMemory=new Uint8Array(0x10000);
   scy:0x00,
   scx:0x00,
   lyc:0x00,
-  bgp:0xFC
-};function gbPPUDrawBackground(){
+  bgp:0xFC,
+  ly:0x00,
+  cycles:0
+};
+   function gbPPUDrawBackground(){
 
   const ctx=c.getContext("2d");
   const image=ctx.createImageData(160,144);
@@ -3338,7 +3341,7 @@ if(addr===0xFF43){
 }
 
 if(addr===0xFF44){
-  return 0;
+  return gbPPU.ly;
 }
 
 if(addr===0xFF45){
