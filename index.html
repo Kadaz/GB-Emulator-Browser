@@ -3827,8 +3827,19 @@ gbROM.length,
 
 
 /*
-   First instruction at $0100.
+   First bytes at $0100.
 */
+
+console.log(
+"ROM[0100-010F]:",
+Array.from(
+  {length:16},
+  (_,i)=>
+    gbRead(0x0100+i)
+      .toString(16)
+      .padStart(2,"0")
+).join(" ")
+);
 
 console.log(
 "Entry opcode:",
