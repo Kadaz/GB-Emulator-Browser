@@ -3194,6 +3194,43 @@ if(addr===0xFF07){
 if(addr>=0xFE00 && addr<=0xFE9F){
   return gbOAM[addr-0xFE00];
 }
+   /* LCD / PPU REGISTERS */
+
+if(addr===0xFF40){
+  return gbPPU.lcdc;
+}
+
+if(addr===0xFF41){
+  return gbPPU.stat;
+}
+
+if(addr===0xFF42){
+  return gbPPU.scy;
+}
+
+if(addr===0xFF43){
+  return gbPPU.scx;
+}
+
+if(addr===0xFF44){
+  return 0;
+}
+
+if(addr===0xFF45){
+  return gbPPU.lyc;
+}
+
+if(addr===0xFF47){
+  return gbPPU.bgp;
+}
+
+if(addr===0xFF48){
+  return 0xFF;
+}
+
+if(addr===0xFF49){
+  return 0xFF;
+}
 if(addr===0xFF0F){
    if(addr===0xFF40){
   return gbPPU.lcdc;
