@@ -1391,7 +1391,16 @@ if(gbROMLoaded){
 
 }
 
-
+console.log(
+  "GB LOOP BYTES:",
+  Array.from(
+    {length:8},
+    (_,i)=>
+      gbRead(0x0198+i)
+        .toString(16)
+        .padStart(2,"0")
+  ).join(" ")
+);
 console.log(
   "GB FRAME:",
   "PC=0x"+
