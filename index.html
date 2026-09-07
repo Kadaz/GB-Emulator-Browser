@@ -3414,204 +3414,284 @@ return gbMemory[addr];
 }
 
 function gbWrite(addr,value){
-   
 
-addr&=0xFFFF;
-value&=0xFF;
-   /*
-   Timer registers
-*/
-if(addr>=0x8000 && addr<=0x9FFF){
-  gbVRAM[addr-0x8000]=value;
-  return;
+  addr&=0xFFFF;
+  value&=0xFF;
+
+
+  /*
+     VRAM
+  */
+
+  if(addr>=0x8000 && addr<=0x9FFF){
+
+    gbVRAM[addr-0x8000]=value;
+
+    return;
+
+  }
+
+
+  /*
+     OAM
+  */
+
+  if(addr>=0xFE00 && addr<=0xFE9F){
+
+    gbOAM[addr-0xFE00]=value;
+
+    return;
+
+  }
+
+
+  /*
+     LCD / PPU REGISTERS
+  */
+
+  if(addr===0xFF40){
+
+    gbPPU.lcdc=value;
+
+    return;
+
+  }
+
+
+  if(addr===0xFF41){
+
+    gbPPU.stat=value;
+
+    return;
+
+  }
+
+
+  if(addr===0xFF42){
+
+    gbPPU.scy=value;
+
+    return;
+
+  }
+
+
+  if(addr===0xFF43){
+
+    gbPPU.scx=value;
+
+    return;
+
+  }
+
+
+  if(addr===0xFF45){
+
+    gbPPU.lyc=value;
+
+    return;
+
+  }
+
+
+  if(addr===0xFF47){
+
+    gbPPU.bgp=value;
+
+    return;
+
+  }
+
+
+  /*
+     Timer registers
+  */
+
+  if(addr===0xFF04){
+
+    gbTimer.div=0;
+
+    return;
+
+  }
+
+
+  if(addr===0xFF05){
+
+    gbTimer.tima=value;
+
+    return;
+
+  }
+
+
+  if(addr===0xFF06){
+
+    gbTimer.tma=value;
+
+    return;
+
+  }
+
+
+  if(addr===0xFF07){
+
+    gbTimer.tac=value&0x07;
+
+    return;
+
+  }
+
+
+  /*
+     Interrupt Flag
+  */
+
+  if(addr===0xFF0F){
+
+    gbMemory[0xFF0F]=value;
+
+    return;
+
+  }
+
+
+  /*
+     Interrupt Enable
+  */
+
+  if(addr===0xFFFF){
+
+    gbMemory[0xFFFF]=value;
+
+    return;
+
+  }
+
+
+  /*
+     Cartridge control area
+  */
+
+  if(addr<0x8000){
+
+    /*
+       For now we support the
+       simplest cartridge mapping.
+
+       MBC support will be expanded
+       later when needed.
+    */
+
+    if(
+      gbCartridge.mbcType===0
+    ){
+
+      return;
+
+    }
+
+
+    /*
+       MBC1 RAM enable
+    */
+
+    if(addr<0x2000){
+
+      gbCartridge.ramEnabled=
+        (value&0x0F)===0x0A;
+
+      return;
+
+    }
+
+
+    /*
+       MBC1 ROM bank select
+    */
+
+    if(
+      addr>=0x2000 &&
+      addr<0x4000
+    ){
+
+      let bank=value&0x1F;
+
+      if(bank===0)
+        bank=1;
+
+      gbCartridge.romBank=bank;
+
+      return;
+
+    }
+
+    return;
+
+  }
+
+
+  /*
+     Cartridge RAM
+  */
+
+  if(
+    addr>=0xA000 &&
+    addr<0xC000
+  ){
+
+    if(!gbCartridge.ramEnabled)
+      return;
+
+    gbCartridge.ram[
+      gbCartridge.ramBank*0x2000+
+      (addr-0xA000)
+    ]=value;
+
+    return;
+
+  }
+
+
+  /*
+     Echo RAM
+  */
+
+  if(
+    addr>=0xE000 &&
+    addr<0xFE00
+  ){
+
+    gbMemory[
+      addr-0x2000
+    ]=value;
+
+    return;
+
+  }
+
+
+  /*
+     Unusable area
+  */
+
+  if(
+    addr>=0xFEA0 &&
+    addr<0xFF00
+  ){
+
+    return;
+
+  }
+
+
+  /*
+     Normal RAM / I/O
+  */
+
+  gbMemory[addr]=value;
+
 }
-
-if(addr>=0xFE00 && addr<=0xFE9F){
-  gbOAM[addr-0xFE00]=value;
-  return;
-}
-if(addr===0xFF04){
-
-  gbTimer.div=0;
-
-  return;
-
-}
-
-if(addr===0xFF05){
-
-  gbTimer.tima=value;
-
-  return;
-
-}
-
-if(addr===0xFF06){
-
-  gbTimer.tma=value;
-
-  return;
-
-}
-
-if(addr===0xFF07){
-
-  gbTimer.tac=value&0x07;
-
-  return;
-
-}
-   /*
-   Interrupt Flag
-*/
-
-if(addr===0xFF0F){
-
-  gbMemory[0xFF0F]=value;
-
-  return;
-
-}
-
-
-/*
-   Interrupt Enable
-*/
-
-if(addr===0xFFFF){
-
-  gbMemory[0xFFFF]=value;
-
-  return;
-
-}
-
-
-/*
-   Cartridge control area
-*/
-
-if(addr<0x8000){
-
-/*
-   For now we support the
-   simplest cartridge mapping.
-
-   MBC support will be expanded
-   later when needed.
-*/
-
-if(
-gbCartridge.mbcType===0
-){
-
-return;
-
-}
-
-
-/*
-   MBC1 RAM enable
-*/
-
-if(addr<0x2000){
-
-gbCartridge.ramEnabled=
-(value&0x0F)===0x0A;
-
-return;
-
-}
-
-
-/*
-   MBC1 ROM bank select
-*/
-
-if(
-addr>=0x2000 &&
-addr<0x4000
-){
-
-let bank=value&0x1F;
-
-if(bank===0)
-bank=1;
-
-gbCartridge.romBank=bank;
-
-return;
-
-}
-
-return;
-
-}
-
-
-/*
-   Cartridge RAM
-*/
-
-if(
-addr>=0xA000 &&
-addr<0xC000
-){
-
-if(!gbCartridge.ramEnabled)
-return;
-
-gbCartridge.ram[
-gbCartridge.ramBank*0x2000+
-(addr-0xA000)
-]=value;
-
-return;
-
-}
-
-
-/*
-   Echo RAM
-*/
-
-if(
-addr>=0xE000 &&
-addr<0xFE00
-){
-
-gbMemory[
-addr-0x2000
-]=value;
-
-return;
-
-}
-
-
-/*
-   Unusable area
-*/
-
-if(
-addr>=0xFEA0 &&
-addr<0xFF00
-){
-
-return;
-
-}
-
-
-/*
-   Normal RAM / I/O
-*/
-
-gbMemory[addr]=value;
-
-}
-
-
 /* =========================================================
    CPU MEMORY CONNECTION
 ========================================================= */
