@@ -2942,6 +2942,68 @@ const gbMemory=new Uint8Array(0x10000);
   bgp:0xFC
 };
    function gbPPUDrawTest(){
+      function gbPPUDrawBackground(){
+
+  const ctx=c.getContext("2d");
+  const image=ctx.createImageData(160,144);
+
+  for(let y=0;y<144;y++){
+
+    for(let x=0;x<160;x++){
+
+      const tileX=x>>3;
+      const tileY=y>>3;
+
+      const mapAddress=
+        0x9800+
+        tileY*32+
+        tileX;
+
+      const tileIndex=
+        gbRead(mapAddress);
+
+      const tileAddress=
+        0x8000+
+        tileIndex*16;
+
+      const row=
+        y&7;
+
+      const low=
+        gbRead(tileAddress+row*2);
+
+      const high=
+        gbRead(tileAddress+row*2+1);
+
+      const bit=
+        7-(x&7);
+
+      const color=
+        ((high>>bit)&1)*2+
+        ((low>>bit)&1);
+
+      const shade=[
+        255,
+        192,
+        96,
+        0
+      ][color];
+
+      const i=(y*160+x)*4;
+
+      image.data[i]=shade;
+      image.data[i+1]=shade;
+      image.data[i+2]=shade;
+      image.data[i+3]=255;
+
+    }
+
+  }
+
+  ctx.putImageData(image,0,0);
+
+}
+      gbPPUDrawBackground();
 
   const ctx=c.getContext("2d");
 
@@ -2975,7 +3037,6 @@ const gbMemory=new Uint8Array(0x10000);
   ctx.putImageData(image,0,0);
 
 }
-   gbPPUDrawTest();
 /* =========================================================
    GAME BOY TIMER
 ========================================================= */
