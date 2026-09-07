@@ -1356,20 +1356,54 @@ last
 
 last=t;
 
+
+/* =========================================================
+   ORIGINAL GAME
+========================================================= */
+
 update(
 Math.min(2,dt)
 );
 
 draw();
 
+
+/* =========================================================
+   GAME BOY CPU
+========================================================= */
+
 if(gbROMLoaded){
+
+  let cycles=0;
+
+  const targetCycles=70224;
+
+  while(cycles<targetCycles){
+
+    if(gbCPU.halted || gbCPU.stopped)
+      break;
+
+    const used=gbCPU.step();
+
+    gbTimerStep(used);
+
+    cycles+=used;
+
+  }
+
+
+  /* =======================================================
+     GAME BOY PPU
+  ======================================================= */
+
   gbPPUDrawBackground();
+
 }
+
 
 requestAnimationFrame(loop);
 
 }
-
 
 /* START */
 
