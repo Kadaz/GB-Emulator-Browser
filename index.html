@@ -1,5 +1,4 @@
 <!doctype html>
-
 <html>
 <head>
 
@@ -121,102 +120,7 @@ transform:scale(.94);
 outline:3px solid #dce9b8;
 outline-offset:3px;
 }
-border-radius:50%;
-font-size:17px;
-background:#38482f;
-border:2px solid #91a978;
-color:#eef6d5;
-z-index:50;
-touch-action:none;
--webkit-user-select:none;
-user-select:none;
-}
 
-#jumpBtn:focus{
-outline:3px solid #dce9b8;
-outline-offset:3px;
-}
-
-#jumpBtn:active{
-transform:scale(.94);
-}
-
-   /* =========================================================
-   GAME BOY START / SELECT BUTTONS
-========================================================= */
-
-const startBtn=
-document.getElementById("startBtn");
-
-const selectBtn=
-document.getElementById("selectBtn");
-
-
-function pressGBButton(name,e){
-
-if(e){
-
-e.preventDefault();
-e.stopPropagation();
-
-}
-
-gbJoypad[name]=1;
-
-setTimeout(
-function(){
-
-gbJoypad[name]=0;
-
-},
-120
-);
-
-}
-
-
-startBtn.addEventListener(
-"pointerdown",
-function(e){
-
-pressGBButton("START",e);
-
-},
-{passive:false}
-);
-
-
-startBtn.addEventListener(
-"click",
-function(e){
-
-pressGBButton("START",e);
-
-},
-{passive:false}
-);
-
-
-selectBtn.addEventListener(
-"pointerdown",
-function(e){
-
-pressGBButton("SELECT",e);
-
-},
-{passive:false}
-);
-
-
-selectBtn.addEventListener(
-"click",
-function(e){
-
-pressGBButton("SELECT",e);
-
-},
-{passive:false}
-);
 </style>
 
 </head>
@@ -302,6 +206,88 @@ let sound=0;
 let last=0;
 let cam=0;
 let opt=0;
+
+
+/* =========================================================
+   GAME BOY JOYPAD
+========================================================= */
+
+const gbJoypad={
+A:0,
+B:0,
+SELECT:0,
+START:0,
+UP:0,
+DOWN:0,
+LEFT:0,
+RIGHT:0,
+
+selectButtons:1,
+selectDpad:1
+};
+
+
+function gbJoypadRead(){
+
+let value=0xCF;
+
+
+/*
+   Bit 5 = 0 -> buttons selected
+   Bit 4 = 0 -> D-pad selected
+*/
+
+if(gbJoypad.selectButtons){
+
+value|=0x20;
+
+}
+else{
+
+value&=~0x20;
+
+if(gbJoypad.A)
+value&=~0x01;
+
+if(gbJoypad.B)
+value&=~0x02;
+
+if(gbJoypad.SELECT)
+value&=~0x04;
+
+if(gbJoypad.START)
+value&=~0x08;
+
+}
+
+
+if(gbJoypad.selectDpad){
+
+value|=0x10;
+
+}
+else{
+
+value&=~0x10;
+
+if(gbJoypad.RIGHT)
+value&=~0x01;
+
+if(gbJoypad.LEFT)
+value&=~0x02;
+
+if(gbJoypad.UP)
+value&=~0x04;
+
+if(gbJoypad.DOWN)
+value&=~0x08;
+
+}
+
+
+return value&0xFF;
+
+}
 
 
 /* =========================================================
@@ -1072,11 +1058,61 @@ x.textAlign="left";
 
 
 /* =========================================================
-   JUMP BUTTON
+   GAME BOY START / SELECT / JUMP BUTTONS
 ========================================================= */
+
+const startBtn=
+document.getElementById("startBtn");
+
+const selectBtn=
+document.getElementById("selectBtn");
 
 const jumpBtn=
 document.getElementById("jumpBtn");
+
+
+function pressGBButton(name,e){
+
+if(e){
+
+e.preventDefault();
+e.stopPropagation();
+
+}
+
+gbJoypad[name]=1;
+
+setTimeout(
+function(){
+
+gbJoypad[name]=0;
+
+},
+120
+);
+
+}
+
+
+startBtn.addEventListener(
+"pointerdown",
+function(e){
+
+pressGBButton("START",e);
+
+},
+{passive:false}
+);
+
+selectBtn.addEventListener(
+"pointerdown",
+function(e){
+
+pressGBButton("SELECT",e);
+
+},
+{passive:false}
+);
 
 
 function jumpButton(e){
@@ -1092,7 +1128,9 @@ k.j=1;
 
 setTimeout(
 function(){
+
 k.j=0;
+
 },
 100
 );
@@ -1102,12 +1140,6 @@ k.j=0;
 
 jumpBtn.addEventListener(
 "pointerdown",
-jumpButton,
-{passive:false}
-);
-
-jumpBtn.addEventListener(
-"click",
 jumpButton,
 {passive:false}
 );
@@ -1258,7 +1290,9 @@ gameKeyUp,
 window.addEventListener(
 "wheel",
 function(e){
+
 e.preventDefault();
+
 },
 {passive:false}
 );
@@ -1266,14 +1300,16 @@ e.preventDefault();
 window.addEventListener(
 "touchmove",
 function(e){
+
 e.preventDefault();
+
 },
 {passive:false}
 );
 
 
 /* =========================================================
-   BUTTONS
+   TOP BUTTONS
 ========================================================= */
 
 document.getElementById(
@@ -1292,7 +1328,9 @@ document.getElementById(
 reset();
 
 if(gbROMLoaded){
+
 gbReset();
+
 }
 
 };
@@ -1307,7 +1345,11 @@ sound=!sound;
 document.getElementById(
 "sound"
 ).textContent=
-sound ? "SOUND ON" : "SOUND";
+sound
+?
+"SOUND ON"
+:
+"SOUND";
 
 if(sound)
 beep(700,.05);
@@ -1317,7 +1359,7 @@ beep(700,.05);
 
 /* =========================================================
    GAMEPAD
-   PRESERVED FROM ORIGINAL
+   ORIGINAL DUALSENSE MAPPING PRESERVED
 ========================================================= */
 
 function gp(){
@@ -1353,7 +1395,7 @@ if(g){
 let ax=g.axes||[];
 
 
-/* D-PAD */
+/* D-PAD / LEFT STICK */
 
 k.l=
 !!(
@@ -1436,73 +1478,6 @@ new Uint8Array(0x2000);
 const gbOAM=
 new Uint8Array(0xA0);
 
-   /* =========================================================
-   GAME BOY JOYPAD
-========================================================= */
-
-const gbJoypad={
-A:0,
-B:0,
-SELECT:0,
-START:0,
-UP:0,
-DOWN:0,
-LEFT:0,
-RIGHT:0,
-
-selectButtons:1,
-selectDpad:1
-};
-
-
-function gbJoypadRead(){
-
-let value=0xCF;
-
-
-/*
-   Bit 5 = 0 -> buttons selected
-   Bit 4 = 0 -> D-pad selected
-*/
-
-if(gbJoypad.selectButtons){
-
-value|=0x20;
-
-}
-else{
-
-value&=~0x20;
-
-if(gbJoypad.A)     value&=~0x01;
-if(gbJoypad.B)     value&=~0x02;
-if(gbJoypad.SELECT)value&=~0x04;
-if(gbJoypad.START) value&=~0x08;
-
-}
-
-
-if(gbJoypad.selectDpad){
-
-value|=0x10;
-
-}
-else{
-
-value&=~0x10;
-
-if(gbJoypad.RIGHT)value&=~0x01;
-if(gbJoypad.LEFT) value&=~0x02;
-if(gbJoypad.UP)   value&=~0x04;
-if(gbJoypad.DOWN) value&=~0x08;
-
-}
-
-
-return value&0xFF;
-
-}
-
 
 /* =========================================================
    GAME BOY CARTRIDGE
@@ -1565,13 +1540,6 @@ tac:0,
 counter:0
 
 };
-
-
-/* =========================================================
-   JOYPAD
-========================================================= */
-
-let gbJoypad=0xCF;
 
 
 /* =========================================================
@@ -1671,71 +1639,6 @@ return 0xFF;
 
 
 /* =========================================================
-   JOYPAD READ
-========================================================= */
-
-function gbReadJoypad(){
-
-let value=gbJoypad&0xF0;
-
-const selectDirection=
-!(gbJoypad&0x10);
-
-const selectButtons=
-!(gbJoypad&0x20);
-
-
-/*
-  Active-low Game Boy buttons.
-*/
-
-let low=0x0F;
-
-
-if(selectDirection){
-
-if(k.r)
-low&=~0x01;
-
-if(k.l)
-low&=~0x02;
-
-/*
-  Down / Up are not used by the original game controls,
-  but keep the register valid.
-*/
-
-}
-
-
-if(selectButtons){
-
-if(k.j)
-low&=~0x01;
-
-if(k.d)
-low&=~0x02;
-
-/*
-  START and SELECT remain unpressed here.
-*/
-
-}
-
-
-if(selectDirection && selectButtons){
-
-low=0x0F;
-
-}
-
-
-return value|low;
-
-}
-
-
-/* =========================================================
    MEMORY READ
 ========================================================= */
 
@@ -1752,22 +1655,7 @@ return gbReadROM(addr);
 
 }
 
-/* GAME BOY JOYPAD */
 
-if(addr===0xFF00){
-
-gbJoypad.selectButtons=
-!!(value&0x20);
-
-gbJoypad.selectDpad=
-!!(value&0x10);
-
-gbMemory[0xFF00]=
-(value&0x30)|0xCF;
-
-return;
-
-}
 /* VRAM */
 
 if(
@@ -1781,13 +1669,6 @@ addr-0x8000
 
 }
 
-   /* GAME BOY JOYPAD */
-
-if(addr===0xFF00){
-
-return gbJoypadRead();
-
-}
 
 /* CARTRIDGE RAM */
 
@@ -1806,6 +1687,18 @@ return gbCartridge.ram[
 bank*0x2000+
 (addr-0xA000)
 ];
+
+}
+
+
+/* WRAM */
+
+if(
+addr>=0xC000 &&
+addr<0xE000
+){
+
+return gbMemory[addr];
 
 }
 
@@ -1854,7 +1747,7 @@ return 0xFF;
 
 if(addr===0xFF00){
 
-return gbReadJoypad();
+return gbJoypadRead();
 
 }
 
@@ -1958,11 +1851,13 @@ return gbMemory[addr];
 
 function gbDMA(value){
 
-const source=(value&0xFF)<<8;
+const source=
+(value&0xFF)<<8;
 
 for(let i=0;i<0xA0;i++){
 
-gbOAM[i]=gbRead(
+gbOAM[i]=
+gbRead(
 (source+i)&0xFFFF
 );
 
@@ -2006,7 +1901,7 @@ if(bank===0)
 bank=1;
 
 gbCartridge.romBank=
-(bank&0x1F);
+bank&0x1F;
 
 return;
 
@@ -2140,8 +2035,14 @@ return;
 
 if(addr===0xFF00){
 
-gbJoypad=
-(value&0x30)|0xC0;
+gbJoypad.selectButtons=
+!!(value&0x20);
+
+gbJoypad.selectDpad=
+!!(value&0x10);
+
+gbMemory[0xFF00]=
+(value&0x30)|0xCF;
 
 return;
 
@@ -2236,9 +2137,7 @@ return;
 }
 
 
-/*
-  LY is read-only on real hardware.
-*/
+/* LY is read-only */
 
 if(addr===0xFF44){
 
@@ -2355,7 +2254,21 @@ gbPPU.ly=0;
 gbPPU.cycles=0;
 gbPPU.mode=2;
 
-gbJoypad=0xCF;
+
+/* JOYPAD RESET */
+
+gbJoypad.A=0;
+gbJoypad.B=0;
+gbJoypad.SELECT=0;
+gbJoypad.START=0;
+gbJoypad.UP=0;
+gbJoypad.DOWN=0;
+gbJoypad.LEFT=0;
+gbJoypad.RIGHT=0;
+
+gbJoypad.selectButtons=1;
+gbJoypad.selectDpad=1;
+
 
 gbMemory[0xFF00]=0xCF;
 gbMemory[0xFF0F]=0xE1;
@@ -2487,7 +2400,6 @@ set Z(v){
 
 if(v)
 this.f|=0x80;
-
 else
 this.f&=~0x80;
 
@@ -2502,7 +2414,6 @@ set N(v){
 
 if(v)
 this.f|=0x40;
-
 else
 this.f&=~0x40;
 
@@ -2517,7 +2428,6 @@ set H(v){
 
 if(v)
 this.f|=0x20;
-
 else
 this.f&=~0x20;
 
@@ -2532,7 +2442,6 @@ set CARRY(v){
 
 if(v)
 this.f|=0x10;
-
 else
 this.f&=~0x10;
 
@@ -2664,10 +2573,6 @@ this.halted=false;
 
 }
 
-
-/*
-  If IME is disabled, the interrupt only wakes HALT.
-*/
 
 if(!this.ime)
 return 0;
@@ -3075,29 +2980,24 @@ return r===6 ? 12 : 4;
 
 
 /* =========================================================
-   SWITCH
+   OPCODES
 ========================================================= */
 
 switch(op){
-
-/* NOP */
 
 case 0x00:
 return 4;
 
 
-/* STOP */
-
 case 0x10:
 
 this.fetch8();
-
 this.stopped=true;
 
 return 4;
 
 
-/* 16-bit immediate loads */
+/* 16-bit loads */
 
 case 0x01:
 this.bc=this.fetch16();
@@ -3116,7 +3016,7 @@ this.sp=this.fetch16();
 return 12;
 
 
-/* INC 16-bit */
+/* 16-bit INC */
 
 case 0x03:
 this.bc=(this.bc+1)&0xFFFF;
@@ -3135,7 +3035,7 @@ this.sp=(this.sp+1)&0xFFFF;
 return 8;
 
 
-/* DEC 16-bit */
+/* 16-bit DEC */
 
 case 0x0B:
 this.bc=(this.bc-1)&0xFFFF;
@@ -3194,7 +3094,7 @@ this.a=this.fetch8();
 return 8;
 
 
-/* LD (BC),A */
+/* Memory loads */
 
 case 0x02:
 
@@ -3205,9 +3105,6 @@ this.a
 
 return 8;
 
-
-/* LD (DE),A */
-
 case 0x12:
 
 this.write(
@@ -3217,9 +3114,6 @@ this.a
 
 return 8;
 
-
-/* LD A,(BC) */
-
 case 0x0A:
 
 this.a=
@@ -3227,18 +3121,12 @@ this.read(this.bc);
 
 return 8;
 
-
-/* LD A,(DE) */
-
 case 0x1A:
 
 this.a=
 this.read(this.de);
 
 return 8;
-
-
-/* LD (HL+),A */
 
 case 0x22:
 
@@ -3252,9 +3140,6 @@ this.hl=
 
 return 8;
 
-
-/* LD (HL-),A */
-
 case 0x32:
 
 this.write(
@@ -3267,9 +3152,6 @@ this.hl=
 
 return 8;
 
-
-/* LD A,(HL+) */
-
 case 0x2A:
 
 this.a=
@@ -3279,9 +3161,6 @@ this.hl=
 (this.hl+1)&0xFFFF;
 
 return 8;
-
-
-/* LD A,(HL-) */
 
 case 0x3A:
 
@@ -3294,7 +3173,7 @@ this.hl=
 return 8;
 
 
-/* ADD HL,rr */
+/* ADD HL */
 
 case 0x09:{
 
@@ -3313,7 +3192,6 @@ return 8;
 
 }
 
-
 case 0x19:{
 
 const old=this.hl;
@@ -3331,7 +3209,6 @@ return 8;
 
 }
 
-
 case 0x29:{
 
 const old=this.hl;
@@ -3348,7 +3225,6 @@ this.hl=result&0xFFFF;
 return 8;
 
 }
-
 
 case 0x39:{
 
@@ -3411,7 +3287,7 @@ return 4;
 }
 
 
-/* RLCA */
+/* ROTATES */
 
 case 0x07:{
 
@@ -3432,8 +3308,6 @@ return 4;
 }
 
 
-/* RRCA */
-
 case 0x0F:{
 
 const carry=
@@ -3452,8 +3326,6 @@ return 4;
 
 }
 
-
-/* RLA */
 
 case 0x17:{
 
@@ -3477,8 +3349,6 @@ return 4;
 }
 
 
-/* RRA */
-
 case 0x1F:{
 
 const oldCarry=
@@ -3501,7 +3371,7 @@ return 4;
 }
 
 
-/* CPL */
+/* CPL / SCF / CCF */
 
 case 0x2F:
 
@@ -3514,8 +3384,6 @@ this.H=1;
 return 4;
 
 
-/* SCF */
-
 case 0x37:
 
 this.N=0;
@@ -3524,8 +3392,6 @@ this.CARRY=1;
 
 return 4;
 
-
-/* CCF */
 
 case 0x3F:
 
@@ -3536,75 +3402,38 @@ this.CARRY=!this.CARRY;
 return 4;
 
 
-/* ADD A,n */
+/* ALU immediate */
 
 case 0xC6:
-
 addA(this.fetch8());
-
 return 8;
-
-
-/* ADC A,n */
 
 case 0xCE:
-
 adcA(this.fetch8());
-
 return 8;
-
-
-/* SUB n */
 
 case 0xD6:
-
 subA(this.fetch8());
-
 return 8;
-
-
-/* SBC A,n */
 
 case 0xDE:
-
 sbcA(this.fetch8());
-
 return 8;
-
-
-/* AND n */
 
 case 0xE6:
-
 andA(this.fetch8());
-
 return 8;
-
-
-/* XOR n */
 
 case 0xEE:
-
 xorA(this.fetch8());
-
 return 8;
-
-
-/* OR n */
 
 case 0xF6:
-
 orA(this.fetch8());
-
 return 8;
 
-
-/* CP n */
-
 case 0xFE:
-
 cpA(this.fetch8());
-
 return 8;
 
 
@@ -3712,7 +3541,7 @@ return 12;
 }
 
 
-/* JP (HL) */
+/* JP HL */
 
 case 0xE9:
 
@@ -3866,12 +3695,11 @@ return 24;
 }
 
 
-/* CALL NZ */
+/* Conditional CALL */
 
 case 0xC4:{
 
-const addr=
-this.fetch16();
+const addr=this.fetch16();
 
 if(!this.Z){
 
@@ -3887,12 +3715,9 @@ return 12;
 }
 
 
-/* CALL Z */
-
 case 0xCC:{
 
-const addr=
-this.fetch16();
+const addr=this.fetch16();
 
 if(this.Z){
 
@@ -3908,12 +3733,9 @@ return 12;
 }
 
 
-/* CALL NC */
-
 case 0xD4:{
 
-const addr=
-this.fetch16();
+const addr=this.fetch16();
 
 if(!this.CARRY){
 
@@ -3929,12 +3751,9 @@ return 12;
 }
 
 
-/* CALL C */
-
 case 0xDC:{
 
-const addr=
-this.fetch16();
+const addr=this.fetch16();
 
 if(this.CARRY){
 
@@ -3960,7 +3779,7 @@ this.pop16();
 return 16;
 
 
-/* RET NZ */
+/* Conditional RET */
 
 case 0xC0:
 
@@ -3976,8 +3795,6 @@ return 20;
 return 8;
 
 
-/* RET Z */
-
 case 0xC8:
 
 if(this.Z){
@@ -3992,8 +3809,6 @@ return 20;
 return 8;
 
 
-/* RET NC */
-
 case 0xD0:
 
 if(!this.CARRY){
@@ -4007,8 +3822,6 @@ return 20;
 
 return 8;
 
-
-/* RET C */
 
 case 0xD8:
 
@@ -4039,58 +3852,38 @@ return 16;
 /* PUSH */
 
 case 0xC5:
-
 this.push16(this.bc);
-
 return 16;
 
 case 0xD5:
-
 this.push16(this.de);
-
 return 16;
 
 case 0xE5:
-
 this.push16(this.hl);
-
 return 16;
 
 case 0xF5:
-
 this.push16(this.af);
-
 return 16;
 
 
 /* POP */
 
 case 0xC1:
-
-this.bc=
-this.pop16();
-
+this.bc=this.pop16();
 return 12;
 
 case 0xD1:
-
-this.de=
-this.pop16();
-
+this.de=this.pop16();
 return 12;
 
 case 0xE1:
-
-this.hl=
-this.pop16();
-
+this.hl=this.pop16();
 return 12;
 
 case 0xF1:
-
-this.af=
-this.pop16();
-
+this.af=this.pop16();
 return 12;
 
 
@@ -4108,11 +3901,7 @@ return 4;
 
 case 0xFB:
 
-/*
-  EI enables interrupts after the following instruction.
-*/
-
-this.imeDelay=2;
+this.ime=true;
 
 return 4;
 
@@ -4166,8 +3955,10 @@ const sp=this.sp;
 
 this.Z=0;
 this.N=0;
+
 this.H=
 ((sp&0x0F)+(value&0x0F))>0x0F;
+
 this.CARRY=
 ((sp&0xFF)+(value&0xFF))>0xFF;
 
@@ -4197,8 +3988,10 @@ const sp=this.sp;
 
 this.Z=0;
 this.N=0;
+
 this.H=
 ((sp&0x0F)+(value&0x0F))>0x0F;
+
 this.CARRY=
 ((sp&0xFF)+(value&0xFF))>0xFF;
 
@@ -4505,55 +4298,47 @@ return 8;
 /* RST */
 
 case 0xC7:
-
 this.push16(this.pc);
 this.pc=0x00;
 return 16;
 
 case 0xCF:
-
 this.push16(this.pc);
 this.pc=0x08;
 return 16;
 
 case 0xD7:
-
 this.push16(this.pc);
 this.pc=0x10;
 return 16;
 
 case 0xDF:
-
 this.push16(this.pc);
 this.pc=0x18;
 return 16;
 
 case 0xE7:
-
 this.push16(this.pc);
 this.pc=0x20;
 return 16;
 
 case 0xEF:
-
 this.push16(this.pc);
 this.pc=0x28;
 return 16;
 
 case 0xF7:
-
 this.push16(this.pc);
 this.pc=0x30;
 return 16;
 
 case 0xFF:
-
 this.push16(this.pc);
 this.pc=0x38;
 return 16;
 
 
-/* Remaining officially unused opcodes */
+/* Illegal opcodes */
 
 case 0xD3:
 case 0xDB:
@@ -4566,12 +4351,6 @@ case 0xED:
 case 0xF4:
 case 0xFC:
 case 0xFD:
-
-/*
-  These are illegal Game Boy opcodes.
-  Keep execution alive rather than freezing
-  the whole emulator.
-*/
 
 return 4;
 
@@ -4589,23 +4368,6 @@ op.toString(16).padStart(2,"0")+
 );
 
 return 4;
-
-}
-
-
-/*
-  Delayed EI.
-*/
-
-if(this.imeDelay>0){
-
-this.imeDelay--;
-
-if(this.imeDelay===0){
-
-this.ime=true;
-
-}
 
 }
 
@@ -4641,7 +4403,7 @@ gbCPU.reset();
 
 
 /* =========================================================
-   PPU STAT UPDATE
+   PPU STAT
 ========================================================= */
 
 function gbUpdateSTAT(){
@@ -4708,14 +4470,6 @@ while(gbPPU.cycles>=456){
 
 gbPPU.cycles-=456;
 
-if(gbPPU.ly<144){
-
-/*
-  Visible scanline completed.
-*/
-
-}
-    
 gbPPU.ly++;
 
 
@@ -4741,7 +4495,7 @@ gbUpdateSTAT();
 
 
 /* =========================================================
-   PPU PALETTES
+   PPU PALETTE
 ========================================================= */
 
 function gbPaletteShade(palette,color){
@@ -4776,9 +4530,7 @@ const bgColorIndex=
 new Uint8Array(160*144);
 
 
-/* =========================================================
-   BACKGROUND
-========================================================= */
+/* BACKGROUND */
 
 for(let y=0;y<144;y++){
 
@@ -4891,14 +4643,11 @@ image.data[i+3]=255;
 }
 
 
-/* =========================================================
-   WINDOW
-========================================================= */
+/* WINDOW */
 
 if(gbPPU.lcdc&0x20){
 
 const wy=gbPPU.wy;
-
 const wx=gbPPU.wx-7;
 
 if(wy<144){
@@ -5018,9 +4767,7 @@ image.data[i+3]=255;
 }
 
 
-/* =========================================================
-   SPRITES
-========================================================= */
+/* SPRITES */
 
 if(gbPPU.lcdc&0x02){
 
@@ -5188,10 +4935,8 @@ image,
 
 
 /* =========================================================
-   GAME BOY FRAME EXECUTION
+   GAME BOY FRAME
 ========================================================= */
-
-let gbFrameCycles=0;
 
 const GB_CYCLES_PER_FRAME=70224;
 
@@ -5223,10 +4968,6 @@ cycles+=actual;
 
 }
 
-
-/*
-  Draw every emulated frame.
-*/
 
 gbPPUDrawBackground();
 
@@ -5414,10 +5155,6 @@ title.trim()
 );
 
 
-/*
-  Start from the normal post-boot Game Boy state.
-*/
-
 gbCPU.reset();
 
 
@@ -5437,7 +5174,7 @@ e
 
 
 /* =========================================================
-   CARTRIDGE HEADER DETECTION
+   CARTRIDGE HEADER
 ========================================================= */
 
 function gbDetectCartridge(){
@@ -5502,11 +5239,6 @@ last
 last=t;
 
 
-/*
-  Until the Game Boy ROM is ready,
-  display the original Retro Land game.
-*/
-
 if(!gbROMLoaded){
 
 update(
@@ -5517,11 +5249,6 @@ draw();
 
 }
 else{
-
-/*
-  Once the ROM is loaded, the canvas belongs
-  to the Game Boy emulator.
-*/
 
 if(!pause){
 
@@ -5552,8 +5279,11 @@ setTimeout(
 function(){
 
 try{
+
 jumpBtn.focus();
-}catch(e){}
+
+}
+catch(e){}
 
 },
 300
