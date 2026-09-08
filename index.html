@@ -1376,81 +1376,164 @@ let pads=navigator.getGamepads?navigator.getGamepads():[];
 let g=null;
 
 for(const z of pads){
+
 if(z){
+
 g=z;
 break;
+
 }
+
 }
 
 if(g){
 
 let ax=g.axes||[];
 
-let stickX=Number.isFinite(ax[0])?ax[0]:0;
-let stickY=Number.isFinite(ax[1])?ax[1]:0;
 
-let up=!!(g.buttons[12]&&g.buttons[12].pressed);
-let down=!!(g.buttons[13]&&g.buttons[13].pressed);
-let left=!!(g.buttons[14]&&g.buttons[14].pressed);
-let right=!!(g.buttons[15]&&g.buttons[15].pressed);
+/* D-PAD */
 
-let d=Number.isFinite(ax[9])?ax[9]:null;
+let left=false;
+let right=false;
+let up=false;
+let down=false;
 
-if(d!==null){
 
-if(Math.abs(d+1.00000)<0.08) up=true;
-if(Math.abs(d-0.14286)<0.08) down=true;
-if(Math.abs(d-0.71429)<0.08) left=true;
-if(Math.abs(d+0.42857)<0.08) right=true;
+/* Standard D-pad */
 
-if(Math.abs(d+0.71429)<0.08){
+if(g.buttons[12]&&g.buttons[12].pressed)
+up=true;
+
+if(g.buttons[13]&&g.buttons[13].pressed)
+down=true;
+
+if(g.buttons[14]&&g.buttons[14].pressed)
+left=true;
+
+if(g.buttons[15]&&g.buttons[15].pressed)
+right=true;
+
+
+/* Left stick */
+
+if((ax[0]||0)<-.35)
+left=true;
+
+if((ax[0]||0)>.35)
+right=true;
+
+if((ax[1]||0)<-.35)
+up=true;
+
+if((ax[1]||0)>.35)
+down=true;
+
+
+/* DualSense D-pad axis */
+
+if(Number.isFinite(ax[9])){
+
+let v=ax[9];
+
+if(Math.abs(v+1.000)<0.12){
+up=true;
+}
+
+if(Math.abs(v-0.14286)<0.12){
+down=true;
+}
+
+if(Math.abs(v-0.71429)<0.12){
+left=true;
+}
+
+if(Math.abs(v+0.42857)<0.12){
+right=true;
+}
+
+if(Math.abs(v+0.71429)<0.12){
 up=true;
 right=true;
 }
 
-if(Math.abs(d+0.14286)<0.08){
+if(Math.abs(v+0.14286)<0.12){
 down=true;
 right=true;
 }
 
-if(Math.abs(d-0.42857)<0.08){
+if(Math.abs(v-0.42857)<0.12){
 left=true;
 down=true;
 }
 
-if(Math.abs(d-1.00000)<0.08){
+if(Math.abs(v-1.000)<0.12){
 left=true;
 up=true;
 }
 
 }
 
-k.l=left||stickX<-.35?1:0;
-k.r=right||stickX>.35?1:0;
 
-gbJoypad.LEFT=left||stickX<-.35?1:0;
-gbJoypad.RIGHT=right||stickX>.35?1:0;
-gbJoypad.UP=up||stickY<-.35?1:0;
-gbJoypad.DOWN=down||stickY>.35?1:0;
+/* FAKE GAME */
 
-k.j=g.buttons[0]&&g.buttons[0].pressed?1:0;
+k.l=left?1:0;
+k.r=right?1:0;
+
+
+/* GAME BOY D-PAD */
+
+gbJoypad.LEFT=left?1:0;
+gbJoypad.RIGHT=right?1:0;
+gbJoypad.UP=up?1:0;
+gbJoypad.DOWN=down?1:0;
+
+
+/* X = A / JUMP */
+
+k.j=
+g.buttons[0]&&g.buttons[0].pressed
+?
+1
+:
+0;
+
 gbJoypad.A=k.j;
 
-k.d=g.buttons[1]&&g.buttons[1].pressed?1:0;
+
+/* O = B / DASH */
+
+k.d=
+g.buttons[1]&&g.buttons[1].pressed
+?
+1
+:
+0;
+
 gbJoypad.B=k.d;
 
-if(g.buttons[9]&&g.buttons[9].pressed&&!opt){
+
+/* OPTIONS = PAUSE */
+
+let options=
+g.buttons[9]&&g.buttons[9].pressed;
+
+if(options&&!opt){
+
 pause=!pause;
 opt=1;
+
 }
 
-if(!g.buttons[9]||!g.buttons[9].pressed){
+if(!options){
+
 opt=0;
-}
 
 }
 
-}catch(e){}
+}
+
+}
+catch(e){}
 
 requestAnimationFrame(gp);
 
@@ -5219,26 +5302,9 @@ gbCartridge.romSize,
 
 function loop(t){
 
-let dt=
-last
-?
-(t-last)/16.666
-:
-1;
-
 last=t;
 
-
-if(!gbROMLoaded){
-
-update(
-Math.min(2,dt)
-);
-
-draw();
-
-}
-else{
+if(gbROMLoaded){
 
 if(!pause){
 
@@ -5247,7 +5313,6 @@ gbRunFrame();
 }
 
 }
-
 
 requestAnimationFrame(loop);
 
