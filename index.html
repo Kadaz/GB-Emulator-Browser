@@ -2916,6 +2916,8 @@ if(this.halted)
 return 4;
 
 
+try{
+
 const op=this.fetch8();
 
 
@@ -4173,7 +4175,7 @@ return 4;
 
 case 0xFB:
 
-this.ime=true;
+this.imeDelay=1;
 
 return 4;
 
@@ -4640,6 +4642,22 @@ op.toString(16).padStart(2,"0")+
 );
 
 return 4;
+
+}
+
+finally{
+
+if(this.imeDelay){
+
+this.imeDelay--;
+
+if(this.imeDelay===0){
+
+this.ime=true;
+
+}
+
+}
 
 }
 
