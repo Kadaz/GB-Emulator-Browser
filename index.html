@@ -69,10 +69,34 @@ padding-top:7px;
 box-sizing:border-box;
 }
 
-#jumpBtn{
+#gbButtons{
 position:fixed;
 right:28px;
-bottom:48px;
+bottom:35px;
+display:flex;
+align-items:center;
+gap:10px;
+z-index:50;
+touch-action:none;
+-webkit-user-select:none;
+user-select:none;
+}
+
+#startBtn,
+#selectBtn{
+width:75px;
+height:48px;
+border-radius:25px;
+font-size:12px;
+background:#38482f;
+border:2px solid #91a978;
+color:#eef6d5;
+touch-action:none;
+-webkit-user-select:none;
+user-select:none;
+}
+
+#jumpBtn{
 width:105px;
 height:65px;
 border-radius:50%;
@@ -80,19 +104,22 @@ font-size:17px;
 background:#38482f;
 border:2px solid #91a978;
 color:#eef6d5;
-z-index:50;
 touch-action:none;
 -webkit-user-select:none;
 user-select:none;
 }
 
+#startBtn:active,
+#selectBtn:active,
+#jumpBtn:active{
+transform:scale(.94);
+}
+
+#startBtn:focus,
+#selectBtn:focus,
 #jumpBtn:focus{
 outline:3px solid #dce9b8;
 outline-offset:3px;
-}
-
-#jumpBtn:active{
-transform:scale(.94);
 }
 
 </style>
@@ -106,9 +133,9 @@ transform:scale(.94);
 <b>RETRO LAND — GAME BOY STYLE</b>
 
 <span>
-
-<button id="pause">PAUSE</button> <button id="reset">RESET</button> <button id="sound">SOUND</button>
-
+<button id="pause">PAUSE</button>
+<button id="reset">RESET</button>
+<button id="sound">SOUND</button>
 </span>
 
 </div>
@@ -119,19 +146,31 @@ transform:scale(.94);
 id="c"
 width="160"
 height="144"
-tabindex="0"> </canvas>
+tabindex="0"></canvas>
 
 </div>
 
 <div id="hint">
 
-DualSense: D-pad / Left Stick = Move · X = Jump · O = Dash · OPTIONS = Pause
+DualSense: D-pad / Left Stick = Move · X = A / Jump · O = B / Dash · OPTIONS = Pause
 
 </div>
+
+<div id="gbButtons">
+
+<button id="startBtn" type="button">
+START
+</button>
+
+<button id="selectBtn" type="button">
+SELECT
+</button>
 
 <button id="jumpBtn" type="button">
 JUMP
 </button>
+
+</div>
 
 <script>
 
@@ -168,6 +207,88 @@ let sound=0;
 let last=0;
 let cam=0;
 let opt=0;
+
+
+/* =========================================================
+   GAME BOY JOYPAD
+========================================================= */
+
+const gbJoypad={
+A:0,
+B:0,
+SELECT:0,
+START:0,
+UP:0,
+DOWN:0,
+LEFT:0,
+RIGHT:0,
+
+selectButtons:1,
+selectDpad:1
+};
+
+
+function gbJoypadRead(){
+
+let value=0xCF;
+
+
+/*
+   Bit 5 = 0 -> buttons selected
+   Bit 4 = 0 -> D-pad selected
+*/
+
+if(gbJoypad.selectButtons){
+
+value|=0x20;
+
+}
+else{
+
+value&=~0x20;
+
+if(gbJoypad.A)
+value&=~0x01;
+
+if(gbJoypad.B)
+value&=~0x02;
+
+if(gbJoypad.SELECT)
+value&=~0x04;
+
+if(gbJoypad.START)
+value&=~0x08;
+
+}
+
+
+if(gbJoypad.selectDpad){
+
+value|=0x10;
+
+}
+else{
+
+value&=~0x10;
+
+if(gbJoypad.RIGHT)
+value&=~0x01;
+
+if(gbJoypad.LEFT)
+value&=~0x02;
+
+if(gbJoypad.UP)
+value&=~0x04;
+
+if(gbJoypad.DOWN)
+value&=~0x08;
+
+}
+
+
+return value&0xFF;
+
+}
 
 
 /* =========================================================
@@ -243,11 +364,9 @@ const coins=[
 [1875,125]
 
 ].map(q=>({
-
 x:q[0],
 y:q[1],
 got:0
-
 }));
 
 
@@ -260,14 +379,12 @@ const foes=[
 [2190,130,-.35]
 
 ].map(q=>({
-
 x:q[0],
 y:q[1],
 w:12,
 h:12,
 v:q[2],
 alive:1
-
 }));
 
 
@@ -288,13 +405,11 @@ let msg="";
 
 function hit(a,b){
 
-return (
-
+return(
 a.x<b[0]+b[2] &&
 a.x+a.w>b[0] &&
 a.y<b[1]+b[3] &&
 a.y+a.h>b[1]
-
 );
 
 }
@@ -355,7 +470,6 @@ p.coins=0;
 p.lives=3;
 
 coins.forEach(q=>q.got=0);
-
 foes.forEach(q=>q.alive=1);
 
 cam=0;
@@ -571,7 +685,6 @@ e.v*=-1;
 
 
 let z=
-
 p.x<e.x+12 &&
 p.x+p.w>e.x &&
 p.y<e.y+12 &&
@@ -614,11 +727,9 @@ beep(70,.12);
 
 
 if(
-
 p.x+p.w>goal.x &&
 p.x<goal.x+goal.w &&
 p.y+p.h>goal.y
-
 ){
 
 win=1;
@@ -638,7 +749,7 @@ Math.min(2080,p.x-105)
 
 
 /* =========================================================
-   DRAW
+   DRAW RETRO LAND
 ========================================================= */
 
 function draw(){
@@ -948,12 +1059,66 @@ x.textAlign="left";
 
 
 /* =========================================================
-   JUMP BUTTON
+   GAME BOY START / SELECT / JUMP BUTTONS
 ========================================================= */
+
+const startBtn=
+document.getElementById("startBtn");
+
+const selectBtn=
+document.getElementById("selectBtn");
 
 const jumpBtn=
 document.getElementById("jumpBtn");
 
+
+function pressGBButton(name,e){
+
+if(e){
+
+e.preventDefault();
+e.stopPropagation();
+
+}
+
+gbJoypad[name]=1;
+
+setTimeout(
+function(){
+
+gbJoypad[name]=0;
+
+},
+120
+);
+
+}
+
+
+startBtn.addEventListener(
+"pointerdown",
+function(e){
+
+pressGBButton("START",e);
+
+},
+{passive:false}
+);
+
+selectBtn.addEventListener(
+"pointerdown",
+function(e){
+
+pressGBButton("SELECT",e);
+
+},
+{passive:false}
+);
+
+
+/* =========================================================
+   VIRTUAL JUMP -> GAME BOY A
+========================================================= */
 
 function jumpButton(e){
 
@@ -965,10 +1130,14 @@ e.stopPropagation();
 }
 
 k.j=1;
+gbJoypad.A=1;
 
 setTimeout(
 function(){
+
 k.j=0;
+gbJoypad.A=0;
+
 },
 100
 );
@@ -978,12 +1147,6 @@ k.j=0;
 
 jumpBtn.addEventListener(
 "pointerdown",
-jumpButton,
-{passive:false}
-);
-
-jumpBtn.addEventListener(
-"click",
 jumpButton,
 {passive:false}
 );
@@ -999,7 +1162,6 @@ let z=e.key.toLowerCase();
 
 
 if(
-
 z==="arrowleft" ||
 z==="arrowright" ||
 z==="arrowup" ||
@@ -1011,7 +1173,6 @@ z==="w" ||
 z==="z" ||
 z==="x" ||
 z==="shift"
-
 ){
 
 e.preventDefault();
@@ -1066,7 +1227,6 @@ let z=e.key.toLowerCase();
 
 
 if(
-
 z==="arrowleft" ||
 z==="arrowright" ||
 z==="arrowup" ||
@@ -1078,7 +1238,6 @@ z==="w" ||
 z==="z" ||
 z==="x" ||
 z==="shift"
-
 ){
 
 e.preventDefault();
@@ -1138,7 +1297,9 @@ gameKeyUp,
 window.addEventListener(
 "wheel",
 function(e){
+
 e.preventDefault();
+
 },
 {passive:false}
 );
@@ -1146,26 +1307,40 @@ e.preventDefault();
 window.addEventListener(
 "touchmove",
 function(e){
+
 e.preventDefault();
+
 },
 {passive:false}
 );
 
 
 /* =========================================================
-   BUTTONS
+   TOP BUTTONS
 ========================================================= */
-
-const pauseBtn=()=>pause=!pause;
 
 document.getElementById(
 "pause"
-).onclick=pauseBtn;
+).onclick=function(){
+
+pause=!pause;
+
+};
 
 
 document.getElementById(
 "reset"
-).onclick=reset;
+).onclick=function(){
+
+reset();
+
+if(gbROMLoaded){
+
+gbReset();
+
+}
+
+};
 
 
 document.getElementById(
@@ -1177,7 +1352,11 @@ sound=!sound;
 document.getElementById(
 "sound"
 ).textContent=
-sound ? "SOUND ON" : "SOUND";
+sound
+?
+"SOUND ON"
+:
+"SOUND";
 
 if(sound)
 beep(700,.05);
@@ -1187,7 +1366,165 @@ beep(700,.05);
 
 /* =========================================================
    GAMEPAD
+   FIXED PS5 SAFARI / WEBKIT DETECTION
+   ORIGINAL MAPPING PRESERVED
 ========================================================= */
+
+
+/*
+   Physical controller mapping:
+
+   0  = X
+   1  = O
+   9  = OPTIONS
+
+   D-pad:
+   12 = UP
+   13 = DOWN
+   14 = LEFT
+   15 = RIGHT
+
+   Left stick:
+   axes[0] = LEFT / RIGHT
+   axes[1] = UP / DOWN
+*/
+
+
+let activeGamepadIndex=null;
+
+
+/* =========================================================
+   GAMEPAD API COMPATIBILITY
+========================================================= */
+
+function getGamepadsCompat(){
+
+try{
+
+if(
+typeof navigator.getGamepads==="function"
+){
+
+return navigator.getGamepads();
+
+}
+
+
+if(
+typeof navigator.webkitGetGamepads==="function"
+){
+
+return navigator.webkitGetGamepads();
+
+}
+
+
+if(
+navigator.webkitGamepads
+){
+
+return navigator.webkitGamepads;
+
+}
+
+}
+catch(e){}
+
+return [];
+
+}
+
+
+/* =========================================================
+   GAMEPAD CONNECTED
+========================================================= */
+
+window.addEventListener(
+"gamepadconnected",
+function(e){
+
+if(
+e &&
+e.gamepad
+){
+
+activeGamepadIndex=
+e.gamepad.index;
+
+console.log(
+"Gamepad connected:",
+e.gamepad.id,
+"index:",
+e.gamepad.index
+);
+
+}
+
+},
+false
+);
+
+
+/* =========================================================
+   GAMEPAD DISCONNECTED
+========================================================= */
+
+window.addEventListener(
+"gamepaddisconnected",
+function(e){
+
+if(
+e &&
+e.gamepad &&
+activeGamepadIndex===
+e.gamepad.index
+){
+
+activeGamepadIndex=null;
+
+console.log(
+"Gamepad disconnected:",
+e.gamepad.id
+);
+
+}
+
+},
+false
+);
+
+
+/* =========================================================
+   GAMEPAD BUTTON
+========================================================= */
+
+function gamepadButtonPressed(g,index){
+
+if(
+!g ||
+!g.buttons
+)
+return false;
+
+
+const b=
+g.buttons[index];
+
+
+if(!b)
+return false;
+
+
+return !!(
+b.pressed===true ||
+(
+b.value!==undefined &&
+Number(b.value)>.5
+)
+);
+
+}
+
 
 function gp(){
 
@@ -1258,6 +1595,69 @@ g.buttons[1].pressed
 );
 
 
+/* GAME BOY */
+
+gbJoypad.A=
+g.buttons[0] &&
+g.buttons[0].pressed
+?
+1
+:
+0;
+
+gbJoypad.B=
+g.buttons[1] &&
+g.buttons[1].pressed
+?
+1
+:
+0;
+
+
+/* SAME D-PAD AS ORIGINAL */
+
+gbJoypad.LEFT=
+k.l
+?
+1
+:
+0;
+
+gbJoypad.RIGHT=
+k.r
+?
+1
+:
+0;
+
+
+/* UP / DOWN */
+
+gbJoypad.UP=
+!!(
+g.buttons[12] &&
+g.buttons[12].pressed
+)
+||
+(ax[1]||0)<-.35
+?
+1
+:
+0;
+
+gbJoypad.DOWN=
+!!(
+g.buttons[13] &&
+g.buttons[13].pressed
+)
+||
+(ax[1]||0)>.35
+?
+1
+:
+0;
+
+
 /* OPTIONS */
 
 if(
@@ -1290,194 +1690,824 @@ opt=0;
 }
 catch(e){}
 
-
 requestAnimationFrame(gp);
 
 }
+/* =========================================================
+   GAME BOY MEMORY
+========================================================= */
+
+const gbMemory=
+new Uint8Array(0x10000);
+
+const gbVRAM=
+new Uint8Array(0x2000);
+
+const gbOAM=
+new Uint8Array(0xA0);
 
 
 /* =========================================================
-   GAME LOOP
+   GAME BOY CARTRIDGE
 ========================================================= */
 
-let gbDebugFrames=0;
-let gbDebugDone=false;
+const gbCartridge={
 
-function loop(t){
+rom:null,
 
-let dt=
-last
-?
-(t-last)/16.666
-:
-1;
+romSize:0,
 
-last=t;
+ram:new Uint8Array(0x8000),
+
+romBank:1,
+
+ramBank:0,
+
+mbcType:0,
+
+ramEnabled:false,
+
+bankingMode:0
+
+};
 
 
 /* =========================================================
-   NORMAL RETRO LAND
+   GAME BOY PPU
 ========================================================= */
 
-update(
-Math.min(2,dt)
-);
+const gbPPU={
 
-draw();
+lcdc:0x91,
+stat:0x85,
+scy:0x00,
+scx:0x00,
+lyc:0x00,
+bgp:0xFC,
+obp0:0xFF,
+obp1:0xFF,
+wy:0x00,
+wx:0x00,
+ly:0x00,
+cycles:0,
+mode:2
+
+};
 
 
 /* =========================================================
-   GAME BOY
+   GAME BOY TIMER
 ========================================================= */
 
-if(gbROMLoaded){
+const gbTimer={
 
-let cycles=0;
+div:0,
+tima:0,
+tma:0,
+tac:0,
+counter:0
 
-const targetCycles=70224;
+};
 
-while(cycles<targetCycles){
 
-const used=gbCPU.step();
+/* =========================================================
+   MBC1
+========================================================= */
 
-gbTimerStep(used);
-gbPPUStep(used);
+function gbMBC1ROMBank(){
 
-cycles+=used;
+if(gbCartridge.mbcType!==1)
+return 1;
+
+let bank=
+gbCartridge.romBank&0x1F;
+
+if(bank===0)
+bank=1;
+
+if(gbCartridge.bankingMode===0){
+
+bank|=
+(gbCartridge.ramBank&3)<<5;
+
+}
+
+return bank;
+
+}
+
+
+function gbMBC1RAMBank(){
+
+if(gbCartridge.bankingMode===0)
+return 0;
+
+return gbCartridge.ramBank&3;
 
 }
 
 
 /* =========================================================
-   DEBUG ONCE
+   ROM READ
 ========================================================= */
 
-if(!gbDebugDone){
+function gbReadROM(addr){
 
-gbDebugFrames++;
+addr&=0xFFFF;
 
-if(gbDebugFrames>=60){
+if(!gbCartridge.rom)
+return 0xFF;
 
-gbDebugDone=true;
 
-let vramNonZero=0;
+if(addr<0x4000){
 
-for(
-let i=0;
-i<gbVRAM.length;
-i++
+let bank=0;
+
+if(
+gbCartridge.mbcType===1 &&
+gbCartridge.bankingMode===0
 ){
 
-if(gbVRAM[i]!==0)
-vramNonZero++;
+bank=(gbCartridge.ramBank&3)<<5;
 
 }
 
 
-console.log(
-"===== GAME BOY STATUS ====="
-);
+const index=
+bank*0x4000+addr;
 
-console.log(
-"PC:",
-"0x"+
-gbCPU.pc
-.toString(16)
-.padStart(4,"0")
-);
+if(index<gbCartridge.rom.length)
+return gbCartridge.rom[index];
 
-console.log(
-"SP:",
-"0x"+
-gbCPU.sp
-.toString(16)
-.padStart(4,"0")
-);
-
-console.log(
-"HALTED:",
-gbCPU.halted
-);
-
-console.log(
-"STOPPED:",
-gbCPU.stopped
-);
-
-console.log(
-"VRAM NON-ZERO:",
-vramNonZero
-);
-
-console.log(
-"LY:",
-gbPPU.ly
-);
-
-console.log(
-"==========================="
-);
+return 0xFF;
 
 }
+
+
+if(addr<0x8000){
+
+const bank=
+gbMBC1ROMBank();
+
+const index=
+bank*0x4000+
+(addr-0x4000);
+
+if(index<gbCartridge.rom.length)
+return gbCartridge.rom[index];
+
+return 0xFF;
+
+}
+
+
+return 0xFF;
 
 }
 
 
 /* =========================================================
-   ONLY DRAW GAME BOY WHEN VRAM HAS DATA
+   MEMORY READ
 ========================================================= */
 
-let hasVRAMData=false;
+function gbRead(addr){
 
-for(
-let i=0;
-i<gbVRAM.length;
-i++
+addr&=0xFFFF;
+
+
+/* ROM */
+
+if(addr<0x8000){
+
+return gbReadROM(addr);
+
+}
+
+
+/* VRAM */
+
+if(
+addr>=0x8000 &&
+addr<=0x9FFF
 ){
 
-if(gbVRAM[i]!==0){
-
-hasVRAMData=true;
-break;
-
-}
+return gbVRAM[
+addr-0x8000
+];
 
 }
 
 
-if(hasVRAMData){
+/* CARTRIDGE RAM */
 
-gbPPUDrawBackground();
+if(
+addr>=0xA000 &&
+addr<0xC000
+){
+
+if(!gbCartridge.ramEnabled)
+return 0xFF;
+
+const bank=
+gbMBC1RAMBank();
+
+return gbCartridge.ram[
+bank*0x2000+
+(addr-0xA000)
+];
 
 }
 
+
+/* WRAM */
+
+if(
+addr>=0xC000 &&
+addr<0xE000
+){
+
+return gbMemory[addr];
+
 }
 
 
-requestAnimationFrame(loop);
+/* ECHO */
+
+if(
+addr>=0xE000 &&
+addr<0xFE00
+){
+
+return gbMemory[
+addr-0x2000
+];
+
+}
+
+
+/* OAM */
+
+if(
+addr>=0xFE00 &&
+addr<=0xFE9F
+){
+
+return gbOAM[
+addr-0xFE00
+];
+
+}
+
+
+/* UNUSABLE */
+
+if(
+addr>=0xFEA0 &&
+addr<0xFF00
+){
+
+return 0xFF;
+
+}
+
+
+/* JOYPAD */
+
+if(addr===0xFF00){
+
+return gbJoypadRead();
+
+}
+
+
+/* TIMER */
+
+if(addr===0xFF04){
+
+return(
+gbTimer.div>>8
+)&0xFF;
+
+}
+
+if(addr===0xFF05){
+
+return gbTimer.tima;
+
+}
+
+if(addr===0xFF06){
+
+return gbTimer.tma;
+
+}
+
+if(addr===0xFF07){
+
+return gbTimer.tac|0xF8;
+
+}
+
+
+/* IF */
+
+if(addr===0xFF0F){
+
+return gbMemory[0xFF0F];
+
+}
+
+
+/* PPU */
+
+if(addr===0xFF40)
+return gbPPU.lcdc;
+
+if(addr===0xFF41)
+return(
+gbPPU.stat|
+0x80
+);
+
+if(addr===0xFF42)
+return gbPPU.scy;
+
+if(addr===0xFF43)
+return gbPPU.scx;
+
+if(addr===0xFF44)
+return gbPPU.ly;
+
+if(addr===0xFF45)
+return gbPPU.lyc;
+
+if(addr===0xFF47)
+return gbPPU.bgp;
+
+if(addr===0xFF48)
+return gbPPU.obp0;
+
+if(addr===0xFF49)
+return gbPPU.obp1;
+
+if(addr===0xFF4A)
+return gbPPU.wy;
+
+if(addr===0xFF4B)
+return gbPPU.wx;
+
+
+/* IE */
+
+if(addr===0xFFFF){
+
+return gbMemory[0xFFFF];
+
+}
+
+
+/* NORMAL RAM */
+
+return gbMemory[addr];
 
 }
 
 
 /* =========================================================
-   START
+   OAM DMA
 ========================================================= */
 
-requestAnimationFrame(gp);
+function gbDMA(value){
 
-requestAnimationFrame(loop);
+const source=
+(value&0xFF)<<8;
 
+for(let i=0;i<0xA0;i++){
 
-setTimeout(
-function(){
-
-try{
-jumpBtn.focus();
-}catch(e){}
-
-},
-300
+gbOAM[i]=
+gbRead(
+(source+i)&0xFFFF
 );
+
+}
+
+}
+
+
+/* =========================================================
+   MEMORY WRITE
+========================================================= */
+
+function gbWrite(addr,value){
+
+addr&=0xFFFF;
+value&=0xFF;
+
+
+/* MBC */
+
+if(addr<0x8000){
+
+if(gbCartridge.mbcType===1){
+
+if(addr<0x2000){
+
+gbCartridge.ramEnabled=
+(value&0x0F)===0x0A;
+
+return;
+
+}
+
+
+if(addr<0x4000){
+
+let bank=
+value&0x1F;
+
+if(bank===0)
+bank=1;
+
+gbCartridge.romBank=
+bank&0x1F;
+
+return;
+
+}
+
+
+if(addr<0x6000){
+
+gbCartridge.ramBank=
+value&0x03;
+
+return;
+
+}
+
+
+if(addr<0x8000){
+
+gbCartridge.bankingMode=
+value&1;
+
+return;
+
+}
+
+}
+
+return;
+
+}
+
+
+/* VRAM */
+
+if(
+addr>=0x8000 &&
+addr<=0x9FFF
+){
+
+gbVRAM[
+addr-0x8000
+]=value;
+
+return;
+
+}
+
+
+/* CARTRIDGE RAM */
+
+if(
+addr>=0xA000 &&
+addr<0xC000
+){
+
+if(!gbCartridge.ramEnabled)
+return;
+
+const bank=
+gbMBC1RAMBank();
+
+gbCartridge.ram[
+bank*0x2000+
+(addr-0xA000)
+]=value;
+
+return;
+
+}
+
+
+/* WRAM */
+
+if(
+addr>=0xC000 &&
+addr<0xE000
+){
+
+gbMemory[addr]=value;
+
+return;
+
+}
+
+
+/* ECHO */
+
+if(
+addr>=0xE000 &&
+addr<0xFE00
+){
+
+gbMemory[
+addr-0x2000
+]=value;
+
+return;
+
+}
+
+
+/* OAM */
+
+if(
+addr>=0xFE00 &&
+addr<=0xFE9F
+){
+
+gbOAM[
+addr-0xFE00
+]=value;
+
+return;
+
+}
+
+
+/* UNUSABLE */
+
+if(
+addr>=0xFEA0 &&
+addr<0xFF00
+){
+
+return;
+
+}
+
+
+/* JOYPAD */
+
+if(addr===0xFF00){
+
+gbJoypad.selectButtons=
+!!(value&0x20);
+
+gbJoypad.selectDpad=
+!!(value&0x10);
+
+gbMemory[0xFF00]=
+(value&0x30)|0xCF;
+
+return;
+
+}
+
+
+/* DIV */
+
+if(addr===0xFF04){
+
+gbTimer.div=0;
+
+return;
+
+}
+
+
+/* TIMER */
+
+if(addr===0xFF05){
+
+gbTimer.tima=value;
+
+return;
+
+}
+
+if(addr===0xFF06){
+
+gbTimer.tma=value;
+
+return;
+
+}
+
+if(addr===0xFF07){
+
+gbTimer.tac=value&7;
+
+return;
+
+}
+
+
+/* IF */
+
+if(addr===0xFF0F){
+
+gbMemory[0xFF0F]=
+value|0xE0;
+
+return;
+
+}
+
+
+/* PPU */
+
+if(addr===0xFF40){
+
+gbPPU.lcdc=value;
+
+return;
+
+}
+
+if(addr===0xFF41){
+
+gbPPU.stat=
+(value&0x78)|
+(gbPPU.stat&0x07)|
+0x80;
+
+return;
+
+}
+
+if(addr===0xFF42){
+
+gbPPU.scy=value;
+
+return;
+
+}
+
+if(addr===0xFF43){
+
+gbPPU.scx=value;
+
+return;
+
+}
+
+
+/* LY is read-only */
+
+if(addr===0xFF44){
+
+gbPPU.ly=0;
+
+return;
+
+}
+
+if(addr===0xFF45){
+
+gbPPU.lyc=value;
+
+return;
+
+}
+
+if(addr===0xFF46){
+
+gbDMA(value);
+
+return;
+
+}
+
+if(addr===0xFF47){
+
+gbPPU.bgp=value;
+
+return;
+
+}
+
+if(addr===0xFF48){
+
+gbPPU.obp0=value;
+
+return;
+
+}
+
+if(addr===0xFF49){
+
+gbPPU.obp1=value;
+
+return;
+
+}
+
+if(addr===0xFF4A){
+
+gbPPU.wy=value;
+
+return;
+
+}
+
+if(addr===0xFF4B){
+
+gbPPU.wx=value;
+
+return;
+
+}
+
+
+/* IE */
+
+if(addr===0xFFFF){
+
+gbMemory[0xFFFF]=value;
+
+return;
+
+}
+
+
+/* NORMAL MEMORY */
+
+gbMemory[addr]=value;
+
+}
+
+
+/* =========================================================
+   HARDWARE RESET
+========================================================= */
+
+function gbHardwareReset(){
+
+gbMemory.fill(0);
+gbVRAM.fill(0);
+gbOAM.fill(0);
+
+gbCartridge.ram.fill(0);
+
+gbTimer.div=0;
+gbTimer.tima=0;
+gbTimer.tma=0;
+gbTimer.tac=0;
+gbTimer.counter=0;
+
+gbPPU.lcdc=0x91;
+gbPPU.stat=0x85;
+gbPPU.scy=0;
+gbPPU.scx=0;
+gbPPU.lyc=0;
+gbPPU.bgp=0xFC;
+gbPPU.obp0=0xFF;
+gbPPU.obp1=0xFF;
+gbPPU.wy=0;
+gbPPU.wx=0;
+gbPPU.ly=0;
+gbPPU.cycles=0;
+gbPPU.mode=2;
+
+
+/* JOYPAD RESET */
+
+gbJoypad.A=0;
+gbJoypad.B=0;
+gbJoypad.SELECT=0;
+gbJoypad.START=0;
+gbJoypad.UP=0;
+gbJoypad.DOWN=0;
+gbJoypad.LEFT=0;
+gbJoypad.RIGHT=0;
+
+gbJoypad.selectButtons=1;
+gbJoypad.selectDpad=1;
+
+
+gbMemory[0xFF00]=0xCF;
+gbMemory[0xFF0F]=0xE1;
+gbMemory[0xFF40]=0x91;
+gbMemory[0xFF41]=0x85;
+gbMemory[0xFF47]=0xFC;
+gbMemory[0xFF48]=0xFF;
+gbMemory[0xFF49]=0xFF;
+gbMemory[0xFFFF]=0x00;
+
+}
 
 
 /* =========================================================
@@ -1487,6 +2517,8 @@ jumpBtn.focus();
 class GBCPU{
 
 constructor(){
+
+this.mem=null;
 
 this.a=0x01;
 this.f=0xB0;
@@ -1507,47 +2539,84 @@ this.halted=false;
 this.stopped=false;
 
 this.ime=false;
+this.imeDelay=0;
 
 }
 
 
 get af(){
-return (this.a<<8)|this.f;
+return(
+(this.a<<8)|
+(this.f&0xF0)
+);
 }
 
+
 set af(v){
-this.a=(v>>8)&255;
-this.f=v&0xF0;
+
+this.a=
+(v>>8)&0xFF;
+
+this.f=
+v&0xF0;
+
 }
 
 
 get bc(){
-return (this.b<<8)|this.c;
+return(
+(this.b<<8)|
+this.c
+);
 }
 
+
 set bc(v){
-this.b=(v>>8)&255;
-this.c=v&255;
+
+this.b=
+(v>>8)&0xFF;
+
+this.c=
+v&0xFF;
+
 }
 
 
 get de(){
-return (this.d<<8)|this.e;
+return(
+(this.d<<8)|
+this.e
+);
 }
 
+
 set de(v){
-this.d=(v>>8)&255;
-this.e=v&255;
+
+this.d=
+(v>>8)&0xFF;
+
+this.e=
+v&0xFF;
+
 }
 
 
 get hl(){
-return (this.h<<8)|this.l;
+return(
+(this.h<<8)|
+this.l
+);
 }
 
+
 set hl(v){
-this.h=(v>>8)&255;
-this.l=v&255;
+
+this.h=
+(v>>8)&0xFF;
+
+this.l=
+v&0xFF;
+
 }
 
 
@@ -1556,8 +2625,12 @@ return !!(this.f&0x80);
 }
 
 set Z(v){
-if(v)this.f|=0x80;
-else this.f&=~0x80;
+
+if(v)
+this.f|=0x80;
+else
+this.f&=~0x80;
+
 }
 
 
@@ -1566,8 +2639,12 @@ return !!(this.f&0x40);
 }
 
 set N(v){
-if(v)this.f|=0x40;
-else this.f&=~0x40;
+
+if(v)
+this.f|=0x40;
+else
+this.f&=~0x40;
+
 }
 
 
@@ -1576,8 +2653,12 @@ return !!(this.f&0x20);
 }
 
 set H(v){
-if(v)this.f|=0x20;
-else this.f&=~0x20;
+
+if(v)
+this.f|=0x20;
+else
+this.f&=~0x20;
+
 }
 
 
@@ -1586,39 +2667,36 @@ return !!(this.f&0x10);
 }
 
 set CARRY(v){
-if(v)this.f|=0x10;
-else this.f&=~0x10;
+
+if(v)
+this.f|=0x10;
+else
+this.f&=~0x10;
+
 }
 
 
 read(addr){
 
-addr&=0xFFFF;
-
-if(this.mem)
-return this.mem[addr]&255;
-
-return 0xFF;
+return gbRead(addr);
 
 }
 
 
 write(addr,value){
 
-addr&=0xFFFF;
-value&=255;
-
-if(this.mem)
-this.mem[addr]=value;
+gbWrite(addr,value);
 
 }
 
 
 fetch8(){
 
-let v=this.read(this.pc);
+const v=
+this.read(this.pc);
 
-this.pc=(this.pc+1)&0xFFFF;
+this.pc=
+(this.pc+1)&0xFFFF;
 
 return v;
 
@@ -1627,8 +2705,8 @@ return v;
 
 fetch16(){
 
-let lo=this.fetch8();
-let hi=this.fetch8();
+const lo=this.fetch8();
+const hi=this.fetch8();
 
 return lo|(hi<<8);
 
@@ -1637,22 +2715,38 @@ return lo|(hi<<8);
 
 push16(v){
 
-this.sp=(this.sp-1)&0xFFFF;
-this.write(this.sp,(v>>8)&255);
+this.sp=
+(this.sp-1)&0xFFFF;
 
-this.sp=(this.sp-1)&0xFFFF;
-this.write(this.sp,v&255);
+this.write(
+this.sp,
+(v>>8)&0xFF
+);
+
+this.sp=
+(this.sp-1)&0xFFFF;
+
+this.write(
+this.sp,
+v&0xFF
+);
 
 }
 
 
 pop16(){
 
-let lo=this.read(this.sp);
-this.sp=(this.sp+1)&0xFFFF;
+const lo=
+this.read(this.sp);
 
-let hi=this.read(this.sp);
-this.sp=(this.sp+1)&0xFFFF;
+this.sp=
+(this.sp+1)&0xFFFF;
+
+const hi=
+this.read(this.sp);
+
+this.sp=
+(this.sp+1)&0xFFFF;
 
 return lo|(hi<<8);
 
@@ -1680,23 +2774,18 @@ this.halted=false;
 this.stopped=false;
 
 this.ime=false;
+this.imeDelay=0;
 
 }
 
-
-nop(){
-
-return 4;
-
-}
 
 serviceInterrupts(){
 
 const ie=
-gbMemory[0xFFFF];
+this.read(0xFFFF);
 
 const iff=
-gbMemory[0xFF0F];
+this.read(0xFF0F);
 
 const pending=
 ie&iff&0x1F;
@@ -1706,21 +2795,12 @@ if(!pending)
 return 0;
 
 
-/*
-  HALT is released when an interrupt becomes pending.
-*/
-
 if(this.halted){
 
 this.halted=false;
 
 }
 
-
-/*
-  IME disabled:
-  interrupt is not serviced yet.
-*/
 
 if(!this.ime)
 return 0;
@@ -1730,48 +2810,30 @@ let vector=0;
 let mask=0;
 
 
-/* VBlank */
-
 if(pending&0x01){
 
 vector=0x40;
 mask=0x01;
 
 }
-
-
-/* LCD STAT */
-
 else if(pending&0x02){
 
 vector=0x48;
 mask=0x02;
 
 }
-
-
-/* Timer */
-
 else if(pending&0x04){
 
 vector=0x50;
 mask=0x04;
 
 }
-
-
-/* Serial */
-
 else if(pending&0x08){
 
 vector=0x58;
 mask=0x08;
 
 }
-
-
-/* Joypad */
-
 else if(pending&0x10){
 
 vector=0x60;
@@ -1784,7 +2846,10 @@ if(!vector)
 return 0;
 
 
-gbMemory[0xFF0F]&=~mask;
+this.write(
+0xFF0F,
+this.read(0xFF0F)&~mask
+);
 
 this.ime=false;
 
@@ -1795,6 +2860,8 @@ this.pc=vector;
 return 20;
 
 }
+
+
 step(){
 
 const interruptCycles=
@@ -1803,17 +2870,17 @@ this.serviceInterrupts();
 if(interruptCycles)
 return interruptCycles;
 
-if(this.halted)
-return 4;
 
 if(this.stopped)
 return 4;
 
+
+if(this.halted)
+return 4;
+
+
 const op=this.fetch8();
 
-/* =========================================================
-   REGISTER ACCESS
-========================================================= */
 
 const getR=(n)=>{
 
@@ -1825,10 +2892,7 @@ case 2:return this.d;
 case 3:return this.e;
 case 4:return this.h;
 case 5:return this.l;
-
-case 6:
-return this.read(this.hl);
-
+case 6:return this.read(this.hl);
 case 7:return this.a;
 
 }
@@ -1840,7 +2904,7 @@ return 0;
 
 const setR=(n,v)=>{
 
-v&=255;
+v&=0xFF;
 
 switch(n){
 
@@ -1850,33 +2914,23 @@ case 2:this.d=v;break;
 case 3:this.e=v;break;
 case 4:this.h=v;break;
 case 5:this.l=v;break;
-
-case 6:
-this.write(this.hl,v);
-break;
-
-case 7:
-this.a=v;
-break;
+case 6:this.write(this.hl,v);break;
+case 7:this.a=v;break;
 
 }
 
 };
 
 
-/* =========================================================
-   INC / DEC
-========================================================= */
-
 const inc8=(v)=>{
 
-const old=v&255;
+const old=v&0xFF;
 
-v=(v+1)&255;
+v=(v+1)&0xFF;
 
-this.Z=(v===0);
+this.Z=v===0;
 this.N=0;
-this.H=((old&15)+1)>15;
+this.H=((old&0x0F)+1)>0x0F;
 
 return v;
 
@@ -1885,33 +2939,29 @@ return v;
 
 const dec8=(v)=>{
 
-const old=v&255;
+const old=v&0xFF;
 
-v=(v-1)&255;
+v=(v-1)&0xFF;
 
-this.Z=(v===0);
+this.Z=v===0;
 this.N=1;
-this.H=(old&15)===0;
+this.H=(old&0x0F)===0;
 
 return v;
 
 };
 
 
-/* =========================================================
-   ALU
-========================================================= */
-
 const addA=(v)=>{
 
-v&=255;
+v&=0xFF;
 
 const a=this.a;
 const result=a+v;
 
-this.a=result&255;
+this.a=result&0xFF;
 
-this.Z=(this.a===0);
+this.Z=this.a===0;
 this.N=0;
 this.H=((a&15)+(v&15))>15;
 this.CARRY=result>255;
@@ -1919,16 +2969,34 @@ this.CARRY=result>255;
 };
 
 
+const adcA=(v)=>{
+
+v&=0xFF;
+
+const carry=this.CARRY?1:0;
+const a=this.a;
+const result=a+v+carry;
+
+this.a=result&0xFF;
+
+this.Z=this.a===0;
+this.N=0;
+this.H=((a&15)+(v&15)+carry)>15;
+this.CARRY=result>255;
+
+};
+
+
 const subA=(v)=>{
 
-v&=255;
+v&=0xFF;
 
 const a=this.a;
 const result=a-v;
 
-this.a=result&255;
+this.a=result&0xFF;
 
-this.Z=(this.a===0);
+this.Z=this.a===0;
 this.N=1;
 this.H=(a&15)<(v&15);
 this.CARRY=a<v;
@@ -1936,14 +3004,32 @@ this.CARRY=a<v;
 };
 
 
+const sbcA=(v)=>{
+
+v&=0xFF;
+
+const carry=this.CARRY?1:0;
+const a=this.a;
+const result=a-v-carry;
+
+this.a=result&0xFF;
+
+this.Z=this.a===0;
+this.N=1;
+this.H=((a&15)-(v&15)-carry)<0;
+this.CARRY=result<0;
+
+};
+
+
 const cpA=(v)=>{
 
-v&=255;
+v&=0xFF;
 
 const a=this.a;
 const result=a-v;
 
-this.Z=((result&255)===0);
+this.Z=(result&0xFF)===0;
 this.N=1;
 this.H=(a&15)<(v&15);
 this.CARRY=a<v;
@@ -1953,9 +3039,10 @@ this.CARRY=a<v;
 
 const xorA=(v)=>{
 
-this.a=(this.a^(v&255))&255;
+this.a=
+(this.a^(v&0xFF))&0xFF;
 
-this.Z=(this.a===0);
+this.Z=this.a===0;
 this.N=0;
 this.H=0;
 this.CARRY=0;
@@ -1965,9 +3052,10 @@ this.CARRY=0;
 
 const orA=(v)=>{
 
-this.a=(this.a|(v&255))&255;
+this.a=
+(this.a|(v&0xFF))&0xFF;
 
-this.Z=(this.a===0);
+this.Z=this.a===0;
 this.N=0;
 this.H=0;
 this.CARRY=0;
@@ -1977,9 +3065,10 @@ this.CARRY=0;
 
 const andA=(v)=>{
 
-this.a=(this.a&(v&255))&255;
+this.a=
+(this.a&(v&0xFF))&0xFF;
 
-this.Z=(this.a===0);
+this.Z=this.a===0;
 this.N=0;
 this.H=1;
 this.CARRY=0;
@@ -2012,7 +3101,7 @@ dst,
 getR(src)
 );
 
-return (
+return(
 dst===6 ||
 src===6
 )
@@ -2041,63 +3130,36 @@ if(op<0x88){
 addA(v);
 
 }
-
 else if(op<0x90){
 
-const carry=this.CARRY?1:0;
-
-const a=this.a;
-const result=a+v+carry;
-
-this.a=result&255;
-
-this.Z=(this.a===0);
-this.N=0;
-this.H=((a&15)+(v&15)+carry)>15;
-this.CARRY=result>255;
+adcA(v);
 
 }
-
 else if(op<0x98){
 
 subA(v);
 
 }
-
 else if(op<0xA0){
 
-const carry=this.CARRY?1:0;
-
-const a=this.a;
-const result=a-v-carry;
-
-this.a=result&255;
-
-this.Z=(this.a===0);
-this.N=1;
-this.H=((a&15)-(v&15)-carry)<0;
-this.CARRY=result<0;
+sbcA(v);
 
 }
-
 else if(op<0xA8){
 
 andA(v);
 
 }
-
 else if(op<0xB0){
 
 xorA(v);
 
 }
-
 else if(op<0xB8){
 
 orA(v);
 
 }
-
 else{
 
 cpA(v);
@@ -2110,7 +3172,7 @@ return r===6 ? 8 : 4;
 
 
 /* =========================================================
-   INC / DEC 8-BIT
+   INC / DEC r
 ========================================================= */
 
 if(
@@ -2146,10 +3208,81 @@ return r===6 ? 12 : 4;
 
 
 /* =========================================================
-   INSTRUCTIONS
+   OPCODES
 ========================================================= */
 
 switch(op){
+
+case 0x00:
+return 4;
+
+
+case 0x10:
+
+this.fetch8();
+this.stopped=true;
+
+return 4;
+
+
+/* 16-bit loads */
+
+case 0x01:
+this.bc=this.fetch16();
+return 12;
+
+case 0x11:
+this.de=this.fetch16();
+return 12;
+
+case 0x21:
+this.hl=this.fetch16();
+return 12;
+
+case 0x31:
+this.sp=this.fetch16();
+return 12;
+
+
+/* 16-bit INC */
+
+case 0x03:
+this.bc=(this.bc+1)&0xFFFF;
+return 8;
+
+case 0x13:
+this.de=(this.de+1)&0xFFFF;
+return 8;
+
+case 0x23:
+this.hl=(this.hl+1)&0xFFFF;
+return 8;
+
+case 0x33:
+this.sp=(this.sp+1)&0xFFFF;
+return 8;
+
+
+/* 16-bit DEC */
+
+case 0x0B:
+this.bc=(this.bc-1)&0xFFFF;
+return 8;
+
+case 0x1B:
+this.de=(this.de-1)&0xFFFF;
+return 8;
+
+case 0x2B:
+this.hl=(this.hl-1)&0xFFFF;
+return 8;
+
+case 0x3B:
+this.sp=(this.sp-1)&0xFFFF;
+return 8;
+
+
+/* LD r,n */
 
 case 0x06:
 this.b=this.fetch8();
@@ -2176,10 +3309,12 @@ this.l=this.fetch8();
 return 8;
 
 case 0x36:
+
 this.write(
 this.hl,
 this.fetch8()
 );
+
 return 12;
 
 case 0x3E:
@@ -2187,81 +3322,7 @@ this.a=this.fetch8();
 return 8;
 
 
-/* NOP */
-
-case 0x00:
-return 4;
-
-
-/* STOP */
-
-case 0x10:
-
-this.fetch8();
-
-this.stopped=true;
-
-return 4;
-
-
-/* 16-BIT LOAD */
-
-case 0x01:
-this.bc=this.fetch16();
-return 12;
-
-case 0x11:
-this.de=this.fetch16();
-return 12;
-
-case 0x21:
-this.hl=this.fetch16();
-return 12;
-
-case 0x31:
-this.sp=this.fetch16();
-return 12;
-
-
-/* INC 16-BIT */
-
-case 0x03:
-this.bc=(this.bc+1)&0xFFFF;
-return 8;
-
-case 0x13:
-this.de=(this.de+1)&0xFFFF;
-return 8;
-
-case 0x23:
-this.hl=(this.hl+1)&0xFFFF;
-return 8;
-
-case 0x33:
-this.sp=(this.sp+1)&0xFFFF;
-return 8;
-
-
-/* DEC 16-BIT */
-
-case 0x0B:
-this.bc=(this.bc-1)&0xFFFF;
-return 8;
-
-case 0x1B:
-this.de=(this.de-1)&0xFFFF;
-return 8;
-
-case 0x2B:
-this.hl=(this.hl-1)&0xFFFF;
-return 8;
-
-case 0x3B:
-this.sp=(this.sp-1)&0xFFFF;
-return 8;
-
-
-/* LD (BC),A */
+/* Memory loads */
 
 case 0x02:
 
@@ -2272,9 +3333,6 @@ this.a
 
 return 8;
 
-
-/* LD (DE),A */
-
 case 0x12:
 
 this.write(
@@ -2284,26 +3342,19 @@ this.a
 
 return 8;
 
-
-/* LD A,(BC) */
-
 case 0x0A:
 
-this.a=this.read(this.bc);
+this.a=
+this.read(this.bc);
 
 return 8;
-
-
-/* LD A,(DE) */
 
 case 0x1A:
 
-this.a=this.read(this.de);
+this.a=
+this.read(this.de);
 
 return 8;
-
-
-/* LD (HL+),A */
 
 case 0x22:
 
@@ -2312,12 +3363,10 @@ this.hl,
 this.a
 );
 
-this.hl=(this.hl+1)&0xFFFF;
+this.hl=
+(this.hl+1)&0xFFFF;
 
 return 8;
-
-
-/* LD (HL-),A */
 
 case 0x32:
 
@@ -2326,34 +3375,33 @@ this.hl,
 this.a
 );
 
-this.hl=(this.hl-1)&0xFFFF;
+this.hl=
+(this.hl-1)&0xFFFF;
 
 return 8;
-
-
-/* LD A,(HL+) */
 
 case 0x2A:
 
-this.a=this.read(this.hl);
+this.a=
+this.read(this.hl);
 
-this.hl=(this.hl+1)&0xFFFF;
+this.hl=
+(this.hl+1)&0xFFFF;
 
 return 8;
-
-
-/* LD A,(HL-) */
 
 case 0x3A:
 
-this.a=this.read(this.hl);
+this.a=
+this.read(this.hl);
 
-this.hl=(this.hl-1)&0xFFFF;
+this.hl=
+(this.hl-1)&0xFFFF;
 
 return 8;
 
 
-/* ADD HL,BC */
+/* ADD HL */
 
 case 0x09:{
 
@@ -2362,7 +3410,8 @@ const v=this.bc;
 const result=old+v;
 
 this.N=0;
-this.H=((old&0xFFF)+(v&0xFFF))>0xFFF;
+this.H=
+((old&0xFFF)+(v&0xFFF))>0xFFF;
 this.CARRY=result>0xFFFF;
 
 this.hl=result&0xFFFF;
@@ -2370,9 +3419,6 @@ this.hl=result&0xFFFF;
 return 8;
 
 }
-
-
-/* ADD HL,DE */
 
 case 0x19:{
 
@@ -2381,7 +3427,8 @@ const v=this.de;
 const result=old+v;
 
 this.N=0;
-this.H=((old&0xFFF)+(v&0xFFF))>0xFFF;
+this.H=
+((old&0xFFF)+(v&0xFFF))>0xFFF;
 this.CARRY=result>0xFFFF;
 
 this.hl=result&0xFFFF;
@@ -2389,9 +3436,6 @@ this.hl=result&0xFFFF;
 return 8;
 
 }
-
-
-/* ADD HL,HL */
 
 case 0x29:{
 
@@ -2400,7 +3444,8 @@ const v=this.hl;
 const result=old+v;
 
 this.N=0;
-this.H=((old&0xFFF)+(v&0xFFF))>0xFFF;
+this.H=
+((old&0xFFF)+(v&0xFFF))>0xFFF;
 this.CARRY=result>0xFFFF;
 
 this.hl=result&0xFFFF;
@@ -2408,9 +3453,6 @@ this.hl=result&0xFFFF;
 return 8;
 
 }
-
-
-/* ADD HL,SP */
 
 case 0x39:{
 
@@ -2419,7 +3461,8 @@ const v=this.sp;
 const result=old+v;
 
 this.N=0;
-this.H=((old&0xFFF)+(v&0xFFF))>0xFFF;
+this.H=
+((old&0xFFF)+(v&0xFFF))>0xFFF;
 this.CARRY=result>0xFFFF;
 
 this.hl=result&0xFFFF;
@@ -2429,57 +3472,196 @@ return 8;
 }
 
 
-/* ADD A,n */
+/* DAA */
+
+case 0x27:{
+
+let a=this.a;
+let correction=0;
+
+if(!this.N){
+
+if(this.H || (a&0x0F)>9)
+correction|=0x06;
+
+if(this.CARRY || a>0x99){
+
+correction|=0x60;
+this.CARRY=1;
+
+}
+
+a=(a+correction)&0xFF;
+
+}
+else{
+
+if(this.H)
+correction|=0x06;
+
+if(this.CARRY)
+correction|=0x60;
+
+a=(a-correction)&0xFF;
+
+}
+
+this.a=a;
+this.Z=this.a===0;
+this.H=0;
+
+return 4;
+
+}
+
+
+/* ROTATES */
+
+case 0x07:{
+
+const carry=
+(this.a&0x80)!==0;
+
+this.a=
+((this.a<<1)&0xFF)|
+(carry?1:0);
+
+this.Z=0;
+this.N=0;
+this.H=0;
+this.CARRY=carry;
+
+return 4;
+
+}
+
+
+case 0x0F:{
+
+const carry=
+(this.a&1)!==0;
+
+this.a=
+(this.a>>1)|
+(carry?0x80:0);
+
+this.Z=0;
+this.N=0;
+this.H=0;
+this.CARRY=carry;
+
+return 4;
+
+}
+
+
+case 0x17:{
+
+const oldCarry=
+this.CARRY?1:0;
+
+const newCarry=
+(this.a&0x80)!==0;
+
+this.a=
+((this.a<<1)&0xFF)|
+oldCarry;
+
+this.Z=0;
+this.N=0;
+this.H=0;
+this.CARRY=newCarry;
+
+return 4;
+
+}
+
+
+case 0x1F:{
+
+const oldCarry=
+this.CARRY?1:0;
+
+const newCarry=
+(this.a&1)!==0;
+
+this.a=
+(this.a>>1)|
+(oldCarry?0x80:0);
+
+this.Z=0;
+this.N=0;
+this.H=0;
+this.CARRY=newCarry;
+
+return 4;
+
+}
+
+
+/* CPL / SCF / CCF */
+
+case 0x2F:
+
+this.a=
+(~this.a)&0xFF;
+
+this.N=1;
+this.H=1;
+
+return 4;
+
+
+case 0x37:
+
+this.N=0;
+this.H=0;
+this.CARRY=1;
+
+return 4;
+
+
+case 0x3F:
+
+this.N=0;
+this.H=0;
+this.CARRY=!this.CARRY;
+
+return 4;
+
+
+/* ALU immediate */
 
 case 0xC6:
-
 addA(this.fetch8());
-
 return 8;
 
-
-/* SUB n */
+case 0xCE:
+adcA(this.fetch8());
+return 8;
 
 case 0xD6:
-
 subA(this.fetch8());
-
 return 8;
 
-
-/* AND n */
+case 0xDE:
+sbcA(this.fetch8());
+return 8;
 
 case 0xE6:
-
 andA(this.fetch8());
-
 return 8;
-
-
-/* XOR n */
 
 case 0xEE:
-
 xorA(this.fetch8());
-
 return 8;
-
-
-/* OR n */
 
 case 0xF6:
-
 orA(this.fetch8());
-
 return 8;
 
-
-/* CP n */
-
 case 0xFE:
-
 cpA(this.fetch8());
-
 return 8;
 
 
@@ -2501,7 +3683,8 @@ return 4;
 
 case 0xC3:
 
-this.pc=this.fetch16();
+this.pc=
+this.fetch16();
 
 return 16;
 
@@ -2510,12 +3693,18 @@ return 16;
 
 case 0xC2:{
 
-const a=this.fetch16();
+const addr=
+this.fetch16();
 
-if(!this.Z)
-this.pc=a;
+if(!this.Z){
+
+this.pc=addr;
 
 return 16;
+
+}
+
+return 12;
 
 }
 
@@ -2524,12 +3713,18 @@ return 16;
 
 case 0xCA:{
 
-const a=this.fetch16();
+const addr=
+this.fetch16();
 
-if(this.Z)
-this.pc=a;
+if(this.Z){
+
+this.pc=addr;
 
 return 16;
+
+}
+
+return 12;
 
 }
 
@@ -2538,12 +3733,18 @@ return 16;
 
 case 0xD2:{
 
-const a=this.fetch16();
+const addr=
+this.fetch16();
 
-if(!this.CARRY)
-this.pc=a;
+if(!this.CARRY){
+
+this.pc=addr;
 
 return 16;
+
+}
+
+return 12;
 
 }
 
@@ -2552,28 +3753,43 @@ return 16;
 
 case 0xDA:{
 
-const a=this.fetch16();
+const addr=
+this.fetch16();
 
-if(this.CARRY)
-this.pc=a;
+if(this.CARRY){
+
+this.pc=addr;
 
 return 16;
 
 }
+
+return 12;
+
+}
+
+
+/* JP HL */
+
+case 0xE9:
+
+this.pc=this.hl;
+
+return 4;
 
 
 /* JR */
 
 case 0x18:{
 
-const offset=this.fetch8();
+const off=this.fetch8();
 
 const signed=
-offset<128
+off<128
 ?
-offset
+off
 :
-offset-256;
+off-256;
 
 this.pc=
 (this.pc+signed)&0xFFFF;
@@ -2587,16 +3803,16 @@ return 12;
 
 case 0x20:{
 
-const offset=this.fetch8();
+const off=this.fetch8();
 
 if(!this.Z){
 
 const signed=
-offset<128
+off<128
 ?
-offset
+off
 :
-offset-256;
+off-256;
 
 this.pc=
 (this.pc+signed)&0xFFFF;
@@ -2614,16 +3830,16 @@ return 8;
 
 case 0x28:{
 
-const offset=this.fetch8();
+const off=this.fetch8();
 
 if(this.Z){
 
 const signed=
-offset<128
+off<128
 ?
-offset
+off
 :
-offset-256;
+off-256;
 
 this.pc=
 (this.pc+signed)&0xFFFF;
@@ -2641,16 +3857,16 @@ return 8;
 
 case 0x30:{
 
-const offset=this.fetch8();
+const off=this.fetch8();
 
 if(!this.CARRY){
 
 const signed=
-offset<128
+off<128
 ?
-offset
+off
 :
-offset-256;
+off-256;
 
 this.pc=
 (this.pc+signed)&0xFFFF;
@@ -2668,16 +3884,16 @@ return 8;
 
 case 0x38:{
 
-const offset=this.fetch8();
+const off=this.fetch8();
 
 if(this.CARRY){
 
 const signed=
-offset<128
+off<128
 ?
-offset
+off
 :
-offset-256;
+off-256;
 
 this.pc=
 (this.pc+signed)&0xFFFF;
@@ -2695,7 +3911,8 @@ return 8;
 
 case 0xCD:{
 
-const addr=this.fetch16();
+const addr=
+this.fetch16();
 
 this.push16(this.pc);
 
@@ -2706,11 +3923,156 @@ return 24;
 }
 
 
+/* Conditional CALL */
+
+case 0xC4:{
+
+const addr=this.fetch16();
+
+if(!this.Z){
+
+this.push16(this.pc);
+this.pc=addr;
+
+return 24;
+
+}
+
+return 12;
+
+}
+
+
+case 0xCC:{
+
+const addr=this.fetch16();
+
+if(this.Z){
+
+this.push16(this.pc);
+this.pc=addr;
+
+return 24;
+
+}
+
+return 12;
+
+}
+
+
+case 0xD4:{
+
+const addr=this.fetch16();
+
+if(!this.CARRY){
+
+this.push16(this.pc);
+this.pc=addr;
+
+return 24;
+
+}
+
+return 12;
+
+}
+
+
+case 0xDC:{
+
+const addr=this.fetch16();
+
+if(this.CARRY){
+
+this.push16(this.pc);
+this.pc=addr;
+
+return 24;
+
+}
+
+return 12;
+
+}
+
+
 /* RET */
 
 case 0xC9:
 
-this.pc=this.pop16();
+this.pc=
+this.pop16();
+
+return 16;
+
+
+/* Conditional RET */
+
+case 0xC0:
+
+if(!this.Z){
+
+this.pc=
+this.pop16();
+
+return 20;
+
+}
+
+return 8;
+
+
+case 0xC8:
+
+if(this.Z){
+
+this.pc=
+this.pop16();
+
+return 20;
+
+}
+
+return 8;
+
+
+case 0xD0:
+
+if(!this.CARRY){
+
+this.pc=
+this.pop16();
+
+return 20;
+
+}
+
+return 8;
+
+
+case 0xD8:
+
+if(this.CARRY){
+
+this.pc=
+this.pop16();
+
+return 20;
+
+}
+
+return 8;
+
+
+/* RETI */
+
+case 0xD9:
+
+this.pc=
+this.pop16();
+
+this.ime=true;
 
 return 16;
 
@@ -2718,64 +4080,52 @@ return 16;
 /* PUSH */
 
 case 0xC5:
-
 this.push16(this.bc);
-
 return 16;
 
 case 0xD5:
-
 this.push16(this.de);
-
 return 16;
 
 case 0xE5:
-
 this.push16(this.hl);
-
 return 16;
 
 case 0xF5:
-
 this.push16(this.af);
-
 return 16;
 
 
 /* POP */
 
 case 0xC1:
-
 this.bc=this.pop16();
-
 return 12;
 
 case 0xD1:
-
 this.de=this.pop16();
-
 return 12;
 
 case 0xE1:
-
 this.hl=this.pop16();
-
 return 12;
 
 case 0xF1:
-
 this.af=this.pop16();
-
 return 12;
 
 
-/* DI / EI */
+/* DI */
 
 case 0xF3:
 
 this.ime=false;
+this.imeDelay=0;
 
 return 4;
+
+
+/* EI */
 
 case 0xFB:
 
@@ -2784,141 +4134,106 @@ this.ime=true;
 return 4;
 
 
-/* RETI */
+/* LD (nn),SP */
 
-case 0xD9:
+case 0x08:{
 
-this.pc=this.pop16();
-this.ime=true;
+const addr=
+this.fetch16();
+
+this.write(
+addr,
+this.sp&0xFF
+);
+
+this.write(
+(addr+1)&0xFFFF,
+(this.sp>>8)&0xFF
+);
+
+return 20;
+
+}
+
+
+/* LD SP,HL */
+
+case 0xF9:
+
+this.sp=this.hl;
+
+return 8;
+
+
+/* ADD SP,e8 */
+
+case 0xE8:{
+
+const value=
+this.fetch8();
+
+const signed=
+value<128
+?
+value
+:
+value-256;
+
+const sp=this.sp;
+
+this.Z=0;
+this.N=0;
+
+this.H=
+((sp&0x0F)+(value&0x0F))>0x0F;
+
+this.CARRY=
+((sp&0xFF)+(value&0xFF))>0xFF;
+
+this.sp=
+(sp+signed)&0xFFFF;
 
 return 16;
 
+}
 
-/* RLA */
 
-case 0x17:{
+/* LD HL,SP+e8 */
 
-const oldCarry=this.CARRY?1:0;
-const newCarry=(this.a&0x80)!==0;
+case 0xF8:{
 
-this.a=((this.a<<1)&255)|oldCarry;
+const value=
+this.fetch8();
+
+const signed=
+value<128
+?
+value
+:
+value-256;
+
+const sp=this.sp;
 
 this.Z=0;
 this.N=0;
-this.H=0;
-this.CARRY=newCarry;
 
-return 4;
+this.H=
+((sp&0x0F)+(value&0x0F))>0x0F;
+
+this.CARRY=
+((sp&0xFF)+(value&0xFF))>0xFF;
+
+this.hl=
+(sp+signed)&0xFFFF;
+
+return 12;
 
 }
 
 
-/* RLCA */
+/* LD (C),A */
 
-case 0x07:{
-
-const newCarry=(this.a&0x80)!==0;
-
-this.a=((this.a<<1)&255)|
-(newCarry?1:0);
-
-this.Z=0;
-this.N=0;
-this.H=0;
-this.CARRY=newCarry;
-
-return 4;
-
-}
-
-
-/* RRA */
-
-case 0x1F:{
-
-const oldCarry=this.CARRY?1:0;
-const newCarry=(this.a&1)!==0;
-
-this.a=(this.a>>1)|
-(oldCarry?0x80:0);
-
-this.Z=0;
-this.N=0;
-this.H=0;
-this.CARRY=newCarry;
-
-return 4;
-
-}
-
-
-/* RRCA */
-
-case 0x0F:{
-
-const newCarry=(this.a&1)!==0;
-
-this.a=(this.a>>1)|
-(newCarry?0x80:0);
-
-this.Z=0;
-this.N=0;
-this.H=0;
-this.CARRY=newCarry;
-
-return 4;
-
-}
-
-
-/* CPL */
-
-case 0x2F:
-
-this.a=(~this.a)&255;
-
-this.N=1;
-this.H=1;
-
-return 4;
-
-
-/* SCF */
-
-case 0x37:
-
-this.N=0;
-this.H=0;
-this.CARRY=1;
-
-return 4;
-
-
-/* CCF */
-
-case 0x3F:
-
-this.N=0;
-this.H=0;
-this.CARRY=!this.CARRY;
-
-return 4;
-
-
-/* HALT */
-
-case 0x76:
-
-this.halted=true;
-
-return 4;
-
-
-/* =========================================================
-   LD (C),A
-========================================================= */
-
-case 0xE2:{
+case 0xE2:
 
 this.write(
 0xFF00+this.c,
@@ -2927,16 +4242,59 @@ this.a
 
 return 8;
 
+
+/* LD A,(C) */
+
+case 0xF2:
+
+this.a=
+this.read(
+0xFF00+this.c
+);
+
+return 8;
+
+
+/* LD (FF00+n),A */
+
+case 0xE0:{
+
+const n=
+this.fetch8();
+
+this.write(
+0xFF00+n,
+this.a
+);
+
+return 12;
+
 }
 
 
-/* =========================================================
-   LD (nn),A
-========================================================= */
+/* LD A,(FF00+n) */
+
+case 0xF0:{
+
+const n=
+this.fetch8();
+
+this.a=
+this.read(
+0xFF00+n
+);
+
+return 12;
+
+}
+
+
+/* LD (nn),A */
 
 case 0xEA:{
 
-const addr=this.fetch16();
+const addr=
+this.fetch16();
 
 this.write(
 addr,
@@ -2948,127 +4306,109 @@ return 16;
 }
 
 
-/* =========================================================
-   LD (FF00+n),A
-========================================================= */
-
-case 0xE0:{
-
-const offset=this.fetch8();
-
-this.write(
-0xFF00+offset,
-this.a
-);
-
-return 12;
-
-}
-
-
-/* =========================================================
-   LD A,(FF00+n)
-========================================================= */
-
-case 0xF0:{
-
-const offset=this.fetch8();
-
-this.a=this.read(
-0xFF00+offset
-);
-
-return 12;
-
-}
-
-
-/* =========================================================
-   LD A,(nn)
-========================================================= */
+/* LD A,(nn) */
 
 case 0xFA:{
 
-const addr=this.fetch16();
+const addr=
+this.fetch16();
 
-this.a=this.read(addr);
+this.a=
+this.read(addr);
 
 return 16;
 
 }
 
+
+/* HALT */
+
+case 0x76:
+
+this.halted=true;
+
+return 4;
+
+
+/* CB */
+
 case 0xCB:{
 
-const cb=this.fetch8();
+const cb=
+this.fetch8();
 
 const r=cb&7;
 const group=cb>>6;
 const bit=(cb>>3)&7;
 
-let value=getR(r);
+let value=
+getR(r);
 
 
-/* =========================================================
-   ROTATE / SHIFT
-========================================================= */
+/* ROTATE / SHIFT */
 
 if(group===0){
 
-const operation=(cb>>3)&7;
+const operation=
+(cb>>3)&7;
 
 let result=0;
 let carry=0;
 
-switch(operation){
 
-/* RLC */
+switch(operation){
 
 case 0:
 
-carry=(value&0x80)!==0;
+carry=
+(value&0x80)!==0;
 
-result=((value<<1)&0xFF)|
+result=
+((value<<1)&0xFF)|
 (carry?1:0);
 
 break;
 
 
-/* RRC */
-
 case 1:
 
-carry=(value&1)!==0;
+carry=
+(value&1)!==0;
 
-result=(value>>1)|
+result=
+(value>>1)|
 (carry?0x80:0);
 
 break;
 
 
-/* RL */
-
 case 2:{
 
-const oldCarry=this.CARRY?1:0;
+const oldCarry=
+this.CARRY?1:0;
 
-carry=(value&0x80)!==0;
+carry=
+(value&0x80)!==0;
 
-result=((value<<1)&0xFF)|oldCarry;
+result=
+((value<<1)&0xFF)|
+oldCarry;
 
 break;
 
 }
 
 
-/* RR */
-
 case 3:{
 
-const oldCarry=this.CARRY?1:0;
+const oldCarry=
+this.CARRY?1:0;
 
-carry=(value&1)!==0;
+carry=
+(value&1)!==0;
 
-result=(value>>1)|
+result=
+(value>>1)|
 (oldCarry?0x80:0);
 
 break;
@@ -3076,22 +4416,21 @@ break;
 }
 
 
-/* SLA */
-
 case 4:
 
-carry=(value&0x80)!==0;
+carry=
+(value&0x80)!==0;
 
-result=(value<<1)&0xFF;
+result=
+(value<<1)&0xFF;
 
 break;
 
 
-/* SRA */
-
 case 5:
 
-carry=(value&1)!==0;
+carry=
+(value&1)!==0;
 
 result=
 (value>>1)|
@@ -3099,8 +4438,6 @@ result=
 
 break;
 
-
-/* SWAP */
 
 case 6:
 
@@ -3113,13 +4450,13 @@ carry=0;
 break;
 
 
-/* SRL */
-
 case 7:
 
-carry=(value&1)!==0;
+carry=
+(value&1)!==0;
 
-result=value>>1;
+result=
+value>>1;
 
 break;
 
@@ -3128,7 +4465,7 @@ break;
 
 setR(r,result);
 
-this.Z=(result===0);
+this.Z=result===0;
 this.N=0;
 this.H=0;
 this.CARRY=carry;
@@ -3138,30 +4475,27 @@ return r===6 ? 16 : 8;
 }
 
 
-/* =========================================================
-   BIT
-========================================================= */
+/* BIT */
 
 if(group===1){
 
-this.Z=(value&(1<<bit))===0;
+this.Z=
+(value&(1<<bit))===0;
+
 this.N=0;
 this.H=1;
-
-/* CARRY remains unchanged */
 
 return r===6 ? 12 : 8;
 
 }
 
 
-/* =========================================================
-   RES
-========================================================= */
+/* RES */
 
 if(group===2){
 
-value&=~(1<<bit);
+value&=
+~(1<<bit);
 
 setR(r,value);
 
@@ -3170,13 +4504,12 @@ return r===6 ? 16 : 8;
 }
 
 
-/* =========================================================
-   SET
-========================================================= */
+/* SET */
 
 if(group===3){
 
-value|=(1<<bit);
+value|=
+(1<<bit);
 
 setR(r,value);
 
@@ -3188,23 +4521,79 @@ return r===6 ? 16 : 8;
 return 8;
 
 }
-/* =========================================================
-   UNKNOWN OPCODE
-========================================================= */
 
-default:{
 
-console.log(
-"UNSUPPORTED:",
-"0x"+
-op.toString(16).padStart(2,"0"),
-"at 0x"+
+/* RST */
+
+case 0xC7:
+this.push16(this.pc);
+this.pc=0x00;
+return 16;
+
+case 0xCF:
+this.push16(this.pc);
+this.pc=0x08;
+return 16;
+
+case 0xD7:
+this.push16(this.pc);
+this.pc=0x10;
+return 16;
+
+case 0xDF:
+this.push16(this.pc);
+this.pc=0x18;
+return 16;
+
+case 0xE7:
+this.push16(this.pc);
+this.pc=0x20;
+return 16;
+
+case 0xEF:
+this.push16(this.pc);
+this.pc=0x28;
+return 16;
+
+case 0xF7:
+this.push16(this.pc);
+this.pc=0x30;
+return 16;
+
+case 0xFF:
+this.push16(this.pc);
+this.pc=0x38;
+return 16;
+
+
+/* Illegal opcodes */
+
+case 0xD3:
+case 0xDB:
+case 0xDD:
+case 0xE3:
+case 0xE4:
+case 0xEB:
+case 0xEC:
+case 0xED:
+case 0xF4:
+case 0xFC:
+case 0xFD:
+
+return 4;
+
+
+/* Unknown */
+
+default:
+
+console.warn(
+"Unknown Game Boy opcode 0x"+
+op.toString(16).padStart(2,"0")+
+" at 0x"+
 ((this.pc-1)&0xFFFF)
-.toString(16)
-.padStart(4,"0")
+.toString(16).padStart(4,"0")
 );
-
-this.halted=true;
 
 return 4;
 
@@ -3214,39 +4603,137 @@ return 4;
 
 }
 
+
+/* =========================================================
+   GAME BOY CPU
+========================================================= */
+
+const gbCPU=
+new GBCPU();
+
+
+/* =========================================================
+   RESET GAME BOY
+========================================================= */
+
+function gbReset(){
+
+gbHardwareReset();
+
+gbCartridge.romBank=1;
+gbCartridge.ramBank=0;
+gbCartridge.ramEnabled=false;
+gbCartridge.bankingMode=0;
+
+gbCPU.reset();
+
 }
 
 
 /* =========================================================
-   GAME BOY MEMORY SYSTEM
+   PPU STAT
 ========================================================= */
 
-const gbMemory=
-new Uint8Array(0x10000);
+function gbUpdateSTAT(){
 
-const gbVRAM=
-new Uint8Array(0x2000);
+if(!(gbPPU.lcdc&0x80)){
 
-const gbOAM=
-new Uint8Array(0xA0);
+gbPPU.mode=0;
+
+}
+else{
+
+if(gbPPU.ly>=144){
+
+gbPPU.mode=1;
+
+}
+else if(gbPPU.cycles<80){
+
+gbPPU.mode=2;
+
+}
+else if(gbPPU.cycles<252){
+
+gbPPU.mode=3;
+
+}
+else{
+
+gbPPU.mode=0;
+
+}
+
+}
+
+
+let stat=
+gbPPU.stat&0x78;
+
+stat|=
+gbPPU.mode;
+
+if(gbPPU.ly===gbPPU.lyc)
+stat|=0x04;
+
+gbPPU.stat=
+stat|0x80;
+
+}
 
 
 /* =========================================================
-   GAME BOY PPU
+   PPU STEP
 ========================================================= */
 
-const gbPPU={
+function gbPPUStep(cycles){
 
-lcdc:0x91,
-stat:0x85,
-scy:0x00,
-scx:0x00,
-lyc:0x00,
-bgp:0xFC,
-ly:0x00,
-cycles:0
+if(!(gbPPU.lcdc&0x80))
+return;
 
-};
+
+gbPPU.cycles+=cycles;
+
+while(gbPPU.cycles>=456){
+
+gbPPU.cycles-=456;
+
+gbPPU.ly++;
+
+
+if(gbPPU.ly===144){
+
+gbMemory[0xFF0F]|=0x01;
+
+}
+
+
+if(gbPPU.ly>=154){
+
+gbPPU.ly=0;
+
+}
+
+}
+
+
+gbUpdateSTAT();
+
+}
+
+
+/* =========================================================
+   PPU PALETTE
+========================================================= */
+
+function gbPaletteShade(palette,color){
+
+return(
+palette>>
+(color*2)
+)&3;
+
+}
 
 
 /* =========================================================
@@ -3260,11 +4747,6 @@ const ctx=c.getContext("2d");
 const image=
 ctx.createImageData(160,144);
 
-
-/* =========================================================
-   GAME BOY PALETTE
-========================================================= */
-
 const palette=[
 255,
 192,
@@ -3272,27 +4754,20 @@ const palette=[
 0
 ];
 
-
-/* =========================================================
-   PALETTE COLOR
-========================================================= */
-
-function shadeFromPalette(color){
-
-return palette[
-(gbPPU.bgp>>(color*2))&3
-];
-
-}
+const bgColorIndex=
+new Uint8Array(160*144);
 
 
-/* =========================================================
-   BACKGROUND
-========================================================= */
+/* BACKGROUND */
 
 for(let y=0;y<144;y++){
 
 for(let screenX=0;screenX<160;screenX++){
+
+let color=0;
+
+
+if(gbPPU.lcdc&0x01){
 
 const worldX=
 (screenX+gbPPU.scx)&255;
@@ -3300,13 +4775,11 @@ const worldX=
 const worldY=
 (y+gbPPU.scy)&255;
 
-
 const tileX=
 worldX>>3;
 
 const tileY=
 worldY>>3;
-
 
 const mapBase=
 (gbPPU.lcdc&0x08)
@@ -3315,26 +4788,15 @@ const mapBase=
 :
 0x9800;
 
-
 const mapAddress=
 mapBase+
 tileY*32+
 tileX;
 
-
 const tileIndex=
 gbRead(mapAddress);
 
-
 let tileAddress;
-
-
-/*
-  LCDC bit 4:
-
-  1 = unsigned tile numbers at 8000
-  0 = signed tile numbers at 8800
-*/
 
 if(gbPPU.lcdc&0x10){
 
@@ -3363,20 +4825,38 @@ const row=
 worldY&7;
 
 const low=
-gbRead(tileAddress+row*2);
+gbRead(
+tileAddress+
+row*2
+);
 
 const high=
-gbRead(tileAddress+row*2+1);
+gbRead(
+tileAddress+
+row*2+1
+);
 
 const bit=
 7-(worldX&7);
 
-const color=
+color=
 ((high>>bit)&1)*2+
 ((low>>bit)&1);
 
+}
+
+
+bgColorIndex[
+y*160+screenX
+]=color;
+
 const shade=
-shadeFromPalette(color);
+palette[
+gbPaletteShade(
+gbPPU.bgp,
+color
+)
+];
 
 const i=
 (y*160+screenX)*4;
@@ -3391,11 +4871,141 @@ image.data[i+3]=255;
 }
 
 
-/* =========================================================
-   SPRITES
-========================================================= */
+/* WINDOW */
+
+if(gbPPU.lcdc&0x20){
+
+const wy=gbPPU.wy;
+const wx=gbPPU.wx-7;
+
+if(wy<144){
+
+for(let y=Math.max(0,wy);y<144;y++){
+
+const windowY=
+y-wy;
+
+const tileY=
+windowY>>3;
+
+for(
+let screenX=Math.max(0,wx);
+screenX<160;
+screenX++
+){
+
+const windowX=
+screenX-wx;
+
+if(windowX<0)
+continue;
+
+const tileX=
+windowX>>3;
+
+if(tileX>=32)
+continue;
+
+const mapBase=
+(gbPPU.lcdc&0x40)
+?
+0x9C00
+:
+0x9800;
+
+const tileIndex=
+gbRead(
+mapBase+
+tileY*32+
+tileX
+);
+
+let tileAddress;
+
+if(gbPPU.lcdc&0x10){
+
+tileAddress=
+0x8000+
+tileIndex*16;
+
+}
+else{
+
+const signedTile=
+tileIndex<128
+?
+tileIndex
+:
+tileIndex-256;
+
+tileAddress=
+0x9000+
+signedTile*16;
+
+}
+
+const row=
+windowY&7;
+
+const low=
+gbRead(
+tileAddress+
+row*2
+);
+
+const high=
+gbRead(
+tileAddress+
+row*2+1
+);
+
+const bit=
+7-(windowX&7);
+
+const color=
+((high>>bit)&1)*2+
+((low>>bit)&1);
+
+bgColorIndex[
+y*160+screenX
+]=color;
+
+const shade=
+palette[
+gbPaletteShade(
+gbPPU.bgp,
+color
+)
+];
+
+const i=
+(y*160+screenX)*4;
+
+image.data[i]=shade;
+image.data[i+1]=shade;
+image.data[i+2]=shade;
+image.data[i+3]=255;
+
+}
+
+}
+
+}
+
+}
+
+
+/* SPRITES */
 
 if(gbPPU.lcdc&0x02){
+
+const spriteHeight=
+(gbPPU.lcdc&0x04)
+?
+16
+:
+8;
+
 
 for(let sprite=0;sprite<40;sprite++){
 
@@ -3408,7 +5018,7 @@ gbOAM[base]-16;
 const sx=
 gbOAM[base+1]-8;
 
-const tile=
+let tile=
 gbOAM[base+2];
 
 const flags=
@@ -3423,46 +5033,71 @@ const flipY=
 const behindBG=
 !!(flags&0x80);
 
+const spritePalette=
+(flags&0x10)
+?
+gbPPU.obp1
+:
+gbPPU.obp0;
 
-for(let py=0;py<8;py++){
 
-let tileY=
+if(spriteHeight===16)
+tile&=0xFE;
+
+
+for(let py=0;py<spriteHeight;py++){
+
+let actualY=
 flipY
 ?
-7-py
+spriteHeight-1-py
 :
 py;
+
+let tileNumber=
+tile;
+
+if(spriteHeight===16){
+
+if(actualY>=8){
+
+tileNumber=
+tile+1;
+
+actualY-=8;
+
+}
+
+}
 
 
 const low=
 gbRead(
 0x8000+
-tile*16+
-tileY*2
+tileNumber*16+
+actualY*2
 );
 
 const high=
 gbRead(
 0x8000+
-tile*16+
-tileY*2+1
+tileNumber*16+
+actualY*2+1
 );
 
 
 for(let px=0;px<8;px++){
 
-let tileX=
+const actualX=
 flipX
 ?
 px
 :
 7-px;
 
-
 const color=
-((high>>tileX)&1)*2+
-((low>>tileX)&1);
-
+((high>>actualX)&1)*2+
+((low>>actualX)&1);
 
 if(color===0)
 continue;
@@ -3484,29 +5119,22 @@ screenY>=144
 continue;
 
 
-/*
-  For now use the BG color underneath
-  only when the sprite priority bit is set.
-*/
-
-if(behindBG){
-
-const existing=
-image.data[
-(screenY*160+screenX)*4
-];
-
-if(existing!==255)
+if(
+behindBG &&
+bgColorIndex[
+screenY*160+screenX
+]!==0
+)
 continue;
-
-}
 
 
 const shade=
 palette[
+gbPaletteShade(
+spritePalette,
 color
+)
 ];
-
 
 const i=
 (screenY*160+screenX)*4;
@@ -3532,20 +5160,51 @@ image,
 );
 
 }
+
+
 /* =========================================================
-   GAME BOY TIMER
+   GAME BOY FRAME
 ========================================================= */
 
-const gbTimer={
+const GB_CYCLES_PER_FRAME=70224;
 
-div:0,
-tima:0,
-tma:0,
-tac:0,
-counter:0
 
-};
+function gbRunFrame(){
 
+if(!gbROMLoaded)
+return;
+
+
+let cycles=0;
+
+while(cycles<GB_CYCLES_PER_FRAME){
+
+const used=
+gbCPU.step();
+
+const actual=
+used>0
+?
+used
+:
+4;
+
+gbTimerStep(actual);
+gbPPUStep(actual);
+
+cycles+=actual;
+
+}
+
+
+gbPPUDrawBackground();
+
+}
+
+
+/* =========================================================
+   TIMER
+========================================================= */
 
 function gbTimerStep(cycles){
 
@@ -3567,10 +5226,9 @@ const frequencies=[
 256
 ];
 
-
 const threshold=
 frequencies[
-gbTimer.tac&0x03
+gbTimer.tac&3
 ];
 
 
@@ -3589,634 +5247,16 @@ gbTimer.tma;
 gbMemory[0xFF0F]|=0x04;
 
 }
-
 else{
 
-gbTimer.tima++;
+gbTimer.tima=
+(gbTimer.tima+1)&0xFF;
 
 }
 
 }
 
 }
-
-
-/* =========================================================
-   GAME BOY PPU STEP
-========================================================= */
-
-function gbPPUStep(cycles){
-
-gbPPU.cycles+=cycles;
-
-while(gbPPU.cycles>=456){
-
-gbPPU.cycles-=456;
-
-gbPPU.ly++;
-
-
-/*
-  LY 144 = start of VBlank.
-*/
-
-if(gbPPU.ly===144){
-
-gbMemory[0xFF0F]|=0x01;
-
-}
-
-
-/*
-  Full frame:
-  144 visible lines + 10 VBlank lines.
-*/
-
-if(gbPPU.ly>=154){
-
-gbPPU.ly=0;
-
-}
-
-}
-
-}
-
-
-/* =========================================================
-   GAME BOY CARTRIDGE
-========================================================= */
-
-const gbCartridge={
-
-rom:null,
-
-romSize:0,
-
-ram:new Uint8Array(0x2000),
-
-romBank:1,
-
-ramBank:0,
-
-mbcType:0,
-
-ramEnabled:false
-
-};
-
-
-/* =========================================================
-   CARTRIDGE HEADER
-========================================================= */
-
-function gbDetectCartridge(){
-
-if(!gbCartridge.rom)
-return;
-
-
-gbCartridge.mbcType=
-gbCartridge.rom[0x0147]||0;
-
-
-const romSizeCode=
-gbCartridge.rom[0x0148]||0;
-
-
-if(romSizeCode<=8){
-
-gbCartridge.romSize=
-32768*(1<<romSizeCode);
-
-}
-
-else{
-
-gbCartridge.romSize=
-gbCartridge.rom.length;
-
-}
-
-
-console.log(
-"Game Boy cartridge type:",
-"0x"+
-gbCartridge.mbcType
-.toString(16)
-.padStart(2,"0")
-);
-
-
-console.log(
-"Game Boy cartridge ROM:",
-gbCartridge.romSize,
-"bytes"
-);
-
-}
-
-
-/* =========================================================
-   ROM READ
-========================================================= */
-
-function gbReadROM(addr){
-
-addr&=0xFFFF;
-
-
-if(!gbCartridge.rom)
-return 0xFF;
-
-
-if(addr<0x4000){
-
-if(
-addr<gbCartridge.rom.length
-)
-return gbCartridge.rom[addr];
-
-return 0xFF;
-
-}
-
-
-if(addr<0x8000){
-
-let bank=
-gbCartridge.romBank;
-
-if(bank===0)
-bank=1;
-
-
-const index=
-bank*0x4000+
-(addr-0x4000);
-
-
-if(
-index<gbCartridge.rom.length
-)
-return gbCartridge.rom[index];
-
-return 0xFF;
-
-}
-
-
-return 0xFF;
-
-}
-
-
-/* =========================================================
-   MEMORY READ
-========================================================= */
-
-function gbRead(addr){
-
-addr&=0xFFFF;
-
-
-/* VRAM */
-
-if(
-addr>=0x8000 &&
-addr<=0x9FFF
-){
-
-return gbVRAM[
-addr-0x8000
-];
-
-}
-
-
-/* TIMER */
-
-if(addr===0xFF04){
-
-return (gbTimer.div>>8)&0xFF;
-
-}
-
-if(addr===0xFF05){
-
-return gbTimer.tima;
-
-}
-
-if(addr===0xFF06){
-
-return gbTimer.tma;
-
-}
-
-if(addr===0xFF07){
-
-return gbTimer.tac|0xF8;
-
-}
-
-
-/* OAM */
-
-if(
-addr>=0xFE00 &&
-addr<=0xFE9F
-){
-
-return gbOAM[
-addr-0xFE00
-];
-
-}
-
-
-/* PPU */
-
-if(addr===0xFF40)
-return gbPPU.lcdc;
-
-if(addr===0xFF41)
-return gbPPU.stat;
-
-if(addr===0xFF42)
-return gbPPU.scy;
-
-if(addr===0xFF43)
-return gbPPU.scx;
-
-if(addr===0xFF44)
-return gbPPU.ly;
-
-if(addr===0xFF45)
-return gbPPU.lyc;
-
-if(addr===0xFF47)
-return gbPPU.bgp;
-
-if(addr===0xFF48)
-return 0xFF;
-
-if(addr===0xFF49)
-return 0xFF;
-
-
-/* INTERRUPT FLAG */
-
-if(addr===0xFF0F){
-
-return gbMemory[0xFF0F];
-
-}
-
-
-/* INTERRUPT ENABLE */
-
-if(addr===0xFFFF){
-
-return gbMemory[0xFFFF];
-
-}
-
-
-/* CARTRIDGE ROM */
-
-if(addr<0x8000){
-
-return gbReadROM(addr);
-
-}
-
-
-/* CARTRIDGE RAM */
-
-if(
-addr>=0xA000 &&
-addr<0xC000
-){
-
-if(!gbCartridge.ramEnabled)
-return 0xFF;
-
-return gbCartridge.ram[
-gbCartridge.ramBank*0x2000+
-(addr-0xA000)
-];
-
-}
-
-
-/* ECHO RAM */
-
-if(
-addr>=0xE000 &&
-addr<0xFE00
-){
-
-return gbMemory[
-addr-0x2000
-];
-
-}
-
-
-/* UNUSABLE */
-
-if(
-addr>=0xFEA0 &&
-addr<0xFF00
-){
-
-return 0xFF;
-
-}
-
-
-/* NORMAL MEMORY */
-
-return gbMemory[addr];
-
-}
-
-
-/* =========================================================
-   MEMORY WRITE
-========================================================= */
-
-function gbWrite(addr,value){
-
-addr&=0xFFFF;
-value&=0xFF;
-
-
-/* VRAM */
-
-if(
-addr>=0x8000 &&
-addr<=0x9FFF
-){
-
-gbVRAM[
-addr-0x8000
-]=value;
-
-return;
-
-}
-
-
-/* OAM */
-
-if(
-addr>=0xFE00 &&
-addr<=0xFE9F
-){
-
-gbOAM[
-addr-0xFE00
-]=value;
-
-return;
-
-}
-
-
-/* PPU */
-
-if(addr===0xFF40){
-
-gbPPU.lcdc=value;
-
-return;
-
-}
-
-if(addr===0xFF41){
-
-gbPPU.stat=value;
-
-return;
-
-}
-
-if(addr===0xFF42){
-
-gbPPU.scy=value;
-
-return;
-
-}
-
-if(addr===0xFF43){
-
-gbPPU.scx=value;
-
-return;
-
-}
-
-if(addr===0xFF45){
-
-gbPPU.lyc=value;
-
-return;
-
-}
-
-if(addr===0xFF47){
-
-gbPPU.bgp=value;
-
-return;
-
-}
-
-
-/* TIMER */
-
-if(addr===0xFF04){
-
-gbTimer.div=0;
-
-return;
-
-}
-
-if(addr===0xFF05){
-
-gbTimer.tima=value;
-
-return;
-
-}
-
-if(addr===0xFF06){
-
-gbTimer.tma=value;
-
-return;
-
-}
-
-if(addr===0xFF07){
-
-gbTimer.tac=value&0x07;
-
-return;
-
-}
-
-
-/* INTERRUPT FLAG */
-
-if(addr===0xFF0F){
-
-gbMemory[0xFF0F]=value;
-
-return;
-
-}
-
-
-/* INTERRUPT ENABLE */
-
-if(addr===0xFFFF){
-
-gbMemory[0xFFFF]=value;
-
-return;
-
-}
-
-
-/* CARTRIDGE CONTROL */
-
-if(addr<0x8000){
-
-if(
-gbCartridge.mbcType===0
-){
-
-return;
-
-}
-
-
-/* RAM ENABLE */
-
-if(addr<0x2000){
-
-gbCartridge.ramEnabled=
-(value&0x0F)===0x0A;
-
-return;
-
-}
-
-
-/* ROM BANK */
-
-if(
-addr>=0x2000 &&
-addr<0x4000
-){
-
-let bank=
-value&0x1F;
-
-if(bank===0)
-bank=1;
-
-gbCartridge.romBank=bank;
-
-return;
-
-}
-
-return;
-
-}
-
-
-/* CARTRIDGE RAM */
-
-if(
-addr>=0xA000 &&
-addr<0xC000
-){
-
-if(!gbCartridge.ramEnabled)
-return;
-
-gbCartridge.ram[
-gbCartridge.ramBank*0x2000+
-(addr-0xA000)
-]=value;
-
-return;
-
-}
-
-
-/* ECHO RAM */
-
-if(
-addr>=0xE000 &&
-addr<0xFE00
-){
-
-gbMemory[
-addr-0x2000
-]=value;
-
-return;
-
-}
-
-
-/* UNUSABLE */
-
-if(
-addr>=0xFEA0 &&
-addr<0xFF00
-){
-
-return;
-
-}
-
-
-/* NORMAL MEMORY */
-
-gbMemory[addr]=value;
-
-}
-
-
-/* =========================================================
-   CPU MEMORY CONNECTION
-========================================================= */
-
-const gbCPU=
-new GBCPU();
-
-
-gbCPU.read=function(addr){
-
-return gbRead(addr);
-
-};
-
-
-gbCPU.write=function(addr,value){
-
-gbWrite(addr,value);
-
-};
 
 
 /* =========================================================
@@ -4272,6 +5312,10 @@ gbROM.length;
 gbDetectCartridge();
 
 
+gbHardwareReset();
+
+gbCPU.reset();
+
 gbROMLoaded=true;
 
 
@@ -4279,7 +5323,6 @@ console.log(
 "Game Boy ROM loaded:",
 GB_ROM_PATH
 );
-
 
 console.log(
 "ROM size:",
@@ -4318,7 +5361,8 @@ i<=0x0143;
 i++
 ){
 
-const ch=gbROM[i];
+const ch=
+gbROM[i];
 
 if(
 ch>=32 &&
@@ -4339,6 +5383,9 @@ title.trim()
 );
 
 
+gbCPU.reset();
+
+
 }
 catch(e){
 
@@ -4352,6 +5399,123 @@ e
 }
 
 }
+
+
+/* =========================================================
+   CARTRIDGE HEADER
+========================================================= */
+
+function gbDetectCartridge(){
+
+if(!gbCartridge.rom)
+return;
+
+
+gbCartridge.mbcType=
+gbCartridge.rom[0x0147]||0;
+
+
+const romSizeCode=
+gbCartridge.rom[0x0148]||0;
+
+
+if(romSizeCode<=8){
+
+gbCartridge.romSize=
+32768*
+(1<<romSizeCode);
+
+}
+else{
+
+gbCartridge.romSize=
+gbCartridge.rom.length;
+
+}
+
+
+console.log(
+"Game Boy cartridge type:",
+"0x"+
+gbCartridge.mbcType
+.toString(16)
+.padStart(2,"0")
+);
+
+console.log(
+"Game Boy cartridge ROM:",
+gbCartridge.romSize,
+"bytes"
+);
+
+}
+
+
+/* =========================================================
+   GAME LOOP
+========================================================= */
+
+function loop(t){
+
+let dt=
+last
+?
+(t-last)/16.666
+:
+1;
+
+last=t;
+
+
+if(!gbROMLoaded){
+
+update(
+Math.min(2,dt)
+);
+
+draw();
+
+}
+else{
+
+if(!pause){
+
+gbRunFrame();
+
+}
+
+}
+
+
+requestAnimationFrame(loop);
+
+}
+
+
+/* =========================================================
+   START
+========================================================= */
+
+gbHardwareReset();
+
+requestAnimationFrame(gp);
+
+requestAnimationFrame(loop);
+
+
+setTimeout(
+function(){
+
+try{
+
+jumpBtn.focus();
+
+}
+catch(e){}
+
+},
+300
+);
 
 
 loadGBROM();
