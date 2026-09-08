@@ -69,12 +69,58 @@ padding-top:7px;
 box-sizing:border-box;
 }
 
-#jumpBtn{
+#gbButtons{
 position:fixed;
 right:28px;
-bottom:48px;
+bottom:35px;
+display:flex;
+align-items:center;
+gap:10px;
+z-index:50;
+touch-action:none;
+-webkit-user-select:none;
+user-select:none;
+}
+
+#startBtn,
+#selectBtn{
+width:75px;
+height:48px;
+border-radius:25px;
+font-size:12px;
+background:#38482f;
+border:2px solid #91a978;
+color:#eef6d5;
+touch-action:none;
+-webkit-user-select:none;
+user-select:none;
+}
+
+#jumpBtn{
 width:105px;
 height:65px;
+border-radius:50%;
+font-size:17px;
+background:#38482f;
+border:2px solid #91a978;
+color:#eef6d5;
+touch-action:none;
+-webkit-user-select:none;
+user-select:none;
+}
+
+#startBtn:active,
+#selectBtn:active,
+#jumpBtn:active{
+transform:scale(.94);
+}
+
+#startBtn:focus,
+#selectBtn:focus,
+#jumpBtn:focus{
+outline:3px solid #dce9b8;
+outline-offset:3px;
+}
 border-radius:50%;
 font-size:17px;
 background:#38482f;
@@ -95,6 +141,82 @@ outline-offset:3px;
 transform:scale(.94);
 }
 
+   /* =========================================================
+   GAME BOY START / SELECT BUTTONS
+========================================================= */
+
+const startBtn=
+document.getElementById("startBtn");
+
+const selectBtn=
+document.getElementById("selectBtn");
+
+
+function pressGBButton(name,e){
+
+if(e){
+
+e.preventDefault();
+e.stopPropagation();
+
+}
+
+gbJoypad[name]=1;
+
+setTimeout(
+function(){
+
+gbJoypad[name]=0;
+
+},
+120
+);
+
+}
+
+
+startBtn.addEventListener(
+"pointerdown",
+function(e){
+
+pressGBButton("START",e);
+
+},
+{passive:false}
+);
+
+
+startBtn.addEventListener(
+"click",
+function(e){
+
+pressGBButton("START",e);
+
+},
+{passive:false}
+);
+
+
+selectBtn.addEventListener(
+"pointerdown",
+function(e){
+
+pressGBButton("SELECT",e);
+
+},
+{passive:false}
+);
+
+
+selectBtn.addEventListener(
+"click",
+function(e){
+
+pressGBButton("SELECT",e);
+
+},
+{passive:false}
+);
 </style>
 
 </head>
@@ -129,7 +251,21 @@ DualSense: D-pad / Left Stick = Move · X = Jump · O = Dash · OPTIONS = Pause
 
 </div>
 
-<button id="jumpBtn" type="button">JUMP</button>
+<div id="gbButtons">
+
+<button id="startBtn" type="button">
+START
+</button>
+
+<button id="selectBtn" type="button">
+SELECT
+</button>
+
+<button id="jumpBtn" type="button">
+JUMP
+</button>
+
+</div>
 
 <script>
 
@@ -1300,6 +1436,73 @@ new Uint8Array(0x2000);
 const gbOAM=
 new Uint8Array(0xA0);
 
+   /* =========================================================
+   GAME BOY JOYPAD
+========================================================= */
+
+const gbJoypad={
+A:0,
+B:0,
+SELECT:0,
+START:0,
+UP:0,
+DOWN:0,
+LEFT:0,
+RIGHT:0,
+
+selectButtons:1,
+selectDpad:1
+};
+
+
+function gbJoypadRead(){
+
+let value=0xCF;
+
+
+/*
+   Bit 5 = 0 -> buttons selected
+   Bit 4 = 0 -> D-pad selected
+*/
+
+if(gbJoypad.selectButtons){
+
+value|=0x20;
+
+}
+else{
+
+value&=~0x20;
+
+if(gbJoypad.A)     value&=~0x01;
+if(gbJoypad.B)     value&=~0x02;
+if(gbJoypad.SELECT)value&=~0x04;
+if(gbJoypad.START) value&=~0x08;
+
+}
+
+
+if(gbJoypad.selectDpad){
+
+value|=0x10;
+
+}
+else{
+
+value&=~0x10;
+
+if(gbJoypad.RIGHT)value&=~0x01;
+if(gbJoypad.LEFT) value&=~0x02;
+if(gbJoypad.UP)   value&=~0x04;
+if(gbJoypad.DOWN) value&=~0x08;
+
+}
+
+
+return value&0xFF;
+
+}
+
 
 /* =========================================================
    GAME BOY CARTRIDGE
@@ -1549,7 +1752,22 @@ return gbReadROM(addr);
 
 }
 
+/* GAME BOY JOYPAD */
 
+if(addr===0xFF00){
+
+gbJoypad.selectButtons=
+!!(value&0x20);
+
+gbJoypad.selectDpad=
+!!(value&0x10);
+
+gbMemory[0xFF00]=
+(value&0x30)|0xCF;
+
+return;
+
+}
 /* VRAM */
 
 if(
@@ -1563,6 +1781,13 @@ addr-0x8000
 
 }
 
+   /* GAME BOY JOYPAD */
+
+if(addr===0xFF00){
+
+return gbJoypadRead();
+
+}
 
 /* CARTRIDGE RAM */
 
