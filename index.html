@@ -1372,260 +1372,85 @@ function gp(){
 
 try{
 
-let pads=
-navigator.getGamepads
-?
-navigator.getGamepads()
-:
-[];
-
+let pads=navigator.getGamepads?navigator.getGamepads():[];
 let g=null;
 
 for(const z of pads){
-
 if(z){
-
 g=z;
 break;
-
 }
-
 }
 
 if(g){
 
 let ax=g.axes||[];
 
+let stickX=Number.isFinite(ax[0])?ax[0]:0;
+let stickY=Number.isFinite(ax[1])?ax[1]:0;
 
-/* =====================================================
-   D-PAD
-===================================================== */
+let up=!!(g.buttons[12]&&g.buttons[12].pressed);
+let down=!!(g.buttons[13]&&g.buttons[13].pressed);
+let left=!!(g.buttons[14]&&g.buttons[14].pressed);
+let right=!!(g.buttons[15]&&g.buttons[15].pressed);
 
-/*
-   Standard Gamepad mapping:
-   14 = LEFT
-   15 = RIGHT
+let d=Number.isFinite(ax[9])?ax[9]:null;
 
-   Some PS5 browser builds expose the DualSense
-   D-pad through an extra axis instead.
-*/
+if(d!==null){
 
-let dpadLeft=
-!!(
-g.buttons[14] &&
-g.buttons[14].pressed
-);
+if(Math.abs(d+1.00000)<0.08) up=true;
+if(Math.abs(d-0.14286)<0.08) down=true;
+if(Math.abs(d-0.71429)<0.08) left=true;
+if(Math.abs(d+0.42857)<0.08) right=true;
 
-let dpadRight=
-!!(
-g.buttons[15] &&
-g.buttons[15].pressed
-);
-
-let dpadUp=
-!!(
-g.buttons[12] &&
-g.buttons[12].pressed
-);
-
-let dpadDown=
-!!(
-g.buttons[13] &&
-g.buttons[13].pressed
-);
-
-
-/* Left stick */
-
-let stickX=
-Number.isFinite(ax[0])
-?
-ax[0]
-:
-0;
-
-let stickY=
-Number.isFinite(ax[1])
-?
-ax[1]
-:
-0;
-
-
-/* =====================================================
-   D-PAD AXIS FALLBACK
-===================================================== */
-
-/*
-   Some DualSense browser mappings expose the D-pad
-   as a separate axis.
-
-   Values are decoded from the usual PS5 mapping.
-*/
-
-let dpadAxis=
-Number.isFinite(ax[9])
-?
-ax[9]
-:
-null;
-
-if(dpadAxis!==null){
-
-if(
-Math.abs(dpadAxis+1.0)<0.12 ||
-Math.abs(dpadAxis+0.714)<0.12 ||
-Math.abs(dpadAxis-1.0)<0.12
-){
-
-dpadUp=true;
-
+if(Math.abs(d+0.71429)<0.08){
+up=true;
+right=true;
 }
 
-if(
-Math.abs(dpadAxis-0.143)<0.12 ||
-Math.abs(dpadAxis+0.143)<0.12 ||
-Math.abs(dpadAxis-0.429)<0.12
-){
-
-dpadDown=true;
-
+if(Math.abs(d+0.14286)<0.08){
+down=true;
+right=true;
 }
 
-if(
-Math.abs(dpadAxis-0.714)<0.12 ||
-Math.abs(dpadAxis-0.429)<0.12 ||
-Math.abs(dpadAxis-1.0)<0.12
-){
-
-dpadLeft=true;
-
+if(Math.abs(d-0.42857)<0.08){
+left=true;
+down=true;
 }
 
-if(
-Math.abs(dpadAxis+0.429)<0.12 ||
-Math.abs(dpadAxis+0.714)<0.12 ||
-Math.abs(dpadAxis-0.143)<0.12
-){
-
-dpadRight=true;
-
+if(Math.abs(d-1.00000)<0.08){
+left=true;
+up=true;
 }
 
 }
 
+k.l=left||stickX<-.35?1:0;
+k.r=right||stickX>.35?1:0;
 
-/* =====================================================
-   MOVEMENT
-===================================================== */
+gbJoypad.LEFT=left||stickX<-.35?1:0;
+gbJoypad.RIGHT=right||stickX>.35?1:0;
+gbJoypad.UP=up||stickY<-.35?1:0;
+gbJoypad.DOWN=down||stickY>.35?1:0;
 
-k.l=
-dpadLeft ||
-stickX<-.35;
+k.j=g.buttons[0]&&g.buttons[0].pressed?1:0;
+gbJoypad.A=k.j;
 
-k.r=
-dpadRight ||
-stickX>.35;
+k.d=g.buttons[1]&&g.buttons[1].pressed?1:0;
+gbJoypad.B=k.d;
 
-
-/* =====================================================
-   GAME BOY D-PAD
-===================================================== */
-
-gbJoypad.LEFT=
-dpadLeft ||
-stickX<-.35
-?
-1
-:
-0;
-
-gbJoypad.RIGHT=
-dpadRight ||
-stickX>.35
-?
-1
-:
-0;
-
-gbJoypad.UP=
-dpadUp ||
-stickY<-.35
-?
-1
-:
-0;
-
-gbJoypad.DOWN=
-dpadDown ||
-stickY>.35
-?
-1
-:
-0;
-
-
-/* =====================================================
-   X = A / JUMP
-===================================================== */
-
-k.j=
-g.buttons[0] &&
-g.buttons[0].pressed
-?
-1
-:
-0;
-
-gbJoypad.A=
-k.j;
-
-
-/* =====================================================
-   O = B / DASH
-===================================================== */
-
-k.d=
-g.buttons[1] &&
-g.buttons[1].pressed
-?
-1
-:
-0;
-
-gbJoypad.B=
-k.d;
-
-
-/* =====================================================
-   OPTIONS = PAUSE
-===================================================== */
-
-if(
-g.buttons[9] &&
-g.buttons[9].pressed &&
-!opt
-){
-
+if(g.buttons[9]&&g.buttons[9].pressed&&!opt){
 pause=!pause;
-
 opt=1;
-
 }
 
-if(
-!g.buttons[9] ||
-!g.buttons[9].pressed
-){
-
+if(!g.buttons[9]||!g.buttons[9].pressed){
 opt=0;
-
 }
 
 }
 
-}
-catch(e){}
+}catch(e){}
 
 requestAnimationFrame(gp);
 
