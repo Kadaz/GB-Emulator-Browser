@@ -1366,165 +1366,7 @@ beep(700,.05);
 
 /* =========================================================
    GAMEPAD
-   FIXED PS5 SAFARI / WEBKIT DETECTION
-   ORIGINAL MAPPING PRESERVED
 ========================================================= */
-
-
-/*
-   Physical controller mapping:
-
-   0  = X
-   1  = O
-   9  = OPTIONS
-
-   D-pad:
-   12 = UP
-   13 = DOWN
-   14 = LEFT
-   15 = RIGHT
-
-   Left stick:
-   axes[0] = LEFT / RIGHT
-   axes[1] = UP / DOWN
-*/
-
-
-let activeGamepadIndex=null;
-
-
-/* =========================================================
-   GAMEPAD API COMPATIBILITY
-========================================================= */
-
-function getGamepadsCompat(){
-
-try{
-
-if(
-typeof navigator.getGamepads==="function"
-){
-
-return navigator.getGamepads();
-
-}
-
-
-if(
-typeof navigator.webkitGetGamepads==="function"
-){
-
-return navigator.webkitGetGamepads();
-
-}
-
-
-if(
-navigator.webkitGamepads
-){
-
-return navigator.webkitGamepads;
-
-}
-
-}
-catch(e){}
-
-return [];
-
-}
-
-
-/* =========================================================
-   GAMEPAD CONNECTED
-========================================================= */
-
-window.addEventListener(
-"gamepadconnected",
-function(e){
-
-if(
-e &&
-e.gamepad
-){
-
-activeGamepadIndex=
-e.gamepad.index;
-
-console.log(
-"Gamepad connected:",
-e.gamepad.id,
-"index:",
-e.gamepad.index
-);
-
-}
-
-},
-false
-);
-
-
-/* =========================================================
-   GAMEPAD DISCONNECTED
-========================================================= */
-
-window.addEventListener(
-"gamepaddisconnected",
-function(e){
-
-if(
-e &&
-e.gamepad &&
-activeGamepadIndex===
-e.gamepad.index
-){
-
-activeGamepadIndex=null;
-
-console.log(
-"Gamepad disconnected:",
-e.gamepad.id
-);
-
-}
-
-},
-false
-);
-
-
-/* =========================================================
-   GAMEPAD BUTTON
-========================================================= */
-
-function gamepadButtonPressed(g,index){
-
-if(
-!g ||
-!g.buttons
-)
-return false;
-
-
-const b=
-g.buttons[index];
-
-
-if(!b)
-return false;
-
-
-return !!(
-b.pressed===true ||
-(
-b.value!==undefined &&
-Number(b.value)>.5
-)
-);
-
-}
-
 
 function gp(){
 
@@ -1539,10 +1381,7 @@ navigator.getGamepads()
 
 let g=null;
 
-
-for(
-const z of pads
-){
+for(const z of pads){
 
 if(z){
 
@@ -1553,119 +1392,219 @@ break;
 
 }
 
-
 if(g){
 
 let ax=g.axes||[];
 
 
-/* D-PAD */
+/* =====================================================
+   D-PAD
+===================================================== */
 
-k.l=
+/*
+   Standard Gamepad mapping:
+   14 = LEFT
+   15 = RIGHT
+
+   Some PS5 browser builds expose the DualSense
+   D-pad through an extra axis instead.
+*/
+
+let dpadLeft=
 !!(
 g.buttons[14] &&
 g.buttons[14].pressed
-)
-||
-(ax[0]||0)<-.35;
+);
 
-
-k.r=
+let dpadRight=
 !!(
 g.buttons[15] &&
 g.buttons[15].pressed
-)
-||
-(ax[0]||0)>.35;
+);
 
+let dpadUp=
+!!(
+g.buttons[12] &&
+g.buttons[12].pressed
+);
 
-/* X */
-
-k.j=!!(
-g.buttons[0] &&
-g.buttons[0].pressed
+let dpadDown=
+!!(
+g.buttons[13] &&
+g.buttons[13].pressed
 );
 
 
-/* O */
+/* Left stick */
 
-k.d=!!(
-g.buttons[1] &&
-g.buttons[1].pressed
-);
-
-
-/* GAME BOY */
-
-gbJoypad.A=
-g.buttons[0] &&
-g.buttons[0].pressed
+let stickX=
+Number.isFinite(ax[0])
 ?
-1
+ax[0]
 :
 0;
 
-gbJoypad.B=
-g.buttons[1] &&
-g.buttons[1].pressed
+let stickY=
+Number.isFinite(ax[1])
 ?
-1
+ax[1]
 :
 0;
 
 
-/* SAME D-PAD AS ORIGINAL */
+/* =====================================================
+   D-PAD AXIS FALLBACK
+===================================================== */
+
+/*
+   Some DualSense browser mappings expose the D-pad
+   as a separate axis.
+
+   Values are decoded from the usual PS5 mapping.
+*/
+
+let dpadAxis=
+Number.isFinite(ax[9])
+?
+ax[9]
+:
+null;
+
+if(dpadAxis!==null){
+
+if(
+Math.abs(dpadAxis+1.0)<0.12 ||
+Math.abs(dpadAxis+0.714)<0.12 ||
+Math.abs(dpadAxis-1.0)<0.12
+){
+
+dpadUp=true;
+
+}
+
+if(
+Math.abs(dpadAxis-0.143)<0.12 ||
+Math.abs(dpadAxis+0.143)<0.12 ||
+Math.abs(dpadAxis-0.429)<0.12
+){
+
+dpadDown=true;
+
+}
+
+if(
+Math.abs(dpadAxis-0.714)<0.12 ||
+Math.abs(dpadAxis-0.429)<0.12 ||
+Math.abs(dpadAxis-1.0)<0.12
+){
+
+dpadLeft=true;
+
+}
+
+if(
+Math.abs(dpadAxis+0.429)<0.12 ||
+Math.abs(dpadAxis+0.714)<0.12 ||
+Math.abs(dpadAxis-0.143)<0.12
+){
+
+dpadRight=true;
+
+}
+
+}
+
+
+/* =====================================================
+   MOVEMENT
+===================================================== */
+
+k.l=
+dpadLeft ||
+stickX<-.35;
+
+k.r=
+dpadRight ||
+stickX>.35;
+
+
+/* =====================================================
+   GAME BOY D-PAD
+===================================================== */
 
 gbJoypad.LEFT=
-k.l
+dpadLeft ||
+stickX<-.35
 ?
 1
 :
 0;
 
 gbJoypad.RIGHT=
-k.r
+dpadRight ||
+stickX>.35
 ?
 1
 :
 0;
 
-
-/* UP / DOWN */
-
 gbJoypad.UP=
-!!(
-g.buttons[12] &&
-g.buttons[12].pressed
-)
-||
-(ax[1]||0)<-.35
+dpadUp ||
+stickY<-.35
 ?
 1
 :
 0;
 
 gbJoypad.DOWN=
-!!(
-g.buttons[13] &&
-g.buttons[13].pressed
-)
-||
-(ax[1]||0)>.35
+dpadDown ||
+stickY>.35
 ?
 1
 :
 0;
 
 
-/* OPTIONS */
+/* =====================================================
+   X = A / JUMP
+===================================================== */
+
+k.j=
+g.buttons[0] &&
+g.buttons[0].pressed
+?
+1
+:
+0;
+
+gbJoypad.A=
+k.j;
+
+
+/* =====================================================
+   O = B / DASH
+===================================================== */
+
+k.d=
+g.buttons[1] &&
+g.buttons[1].pressed
+?
+1
+:
+0;
+
+gbJoypad.B=
+k.d;
+
+
+/* =====================================================
+   OPTIONS = PAUSE
+===================================================== */
 
 if(
-
 g.buttons[9] &&
 g.buttons[9].pressed &&
 !opt
-
 ){
 
 pause=!pause;
@@ -1675,10 +1614,8 @@ opt=1;
 }
 
 if(
-
-g.buttons[9] &&
+!g.buttons[9] ||
 !g.buttons[9].pressed
-
 ){
 
 opt=0;
