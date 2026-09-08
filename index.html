@@ -1,4 +1,5 @@
 <!doctype html>
+
 <html>
 <head>
 
@@ -1360,6 +1361,7 @@ beep(700,.05);
 /* =========================================================
    GAMEPAD
    ORIGINAL DUALSENSE MAPPING PRESERVED
+   + GAME BOY INPUT
 ========================================================= */
 
 function gp(){
@@ -1394,6 +1396,10 @@ if(g){
 
 let ax=g.axes||[];
 
+
+/* =====================================================
+   ORIGINAL RETRO LAND DUALSENSE MAPPING
+===================================================== */
 
 /* D-PAD / LEFT STICK */
 
@@ -1453,6 +1459,104 @@ g.buttons[9] &&
 opt=0;
 
 }
+
+
+/* =====================================================
+   GAME BOY DUALSENSE INPUT
+===================================================== */
+
+/*
+   Game Boy A  = DualSense X       = button 0
+   Game Boy B  = DualSense O       = button 1
+
+   D-pad:
+   Up    = button 12 / left stick up
+   Down  = button 13 / left stick down
+   Left  = button 14 / left stick left
+   Right = button 15 / left stick right
+*/
+
+
+gbJoypad.A=
+(
+g.buttons[0] &&
+g.buttons[0].pressed
+)
+?
+1
+:
+0;
+
+
+gbJoypad.B=
+(
+g.buttons[1] &&
+g.buttons[1].pressed
+)
+?
+1
+:
+0;
+
+
+gbJoypad.UP=
+(
+(
+g.buttons[12] &&
+g.buttons[12].pressed
+)
+||
+(ax[1]||0)<-.35
+)
+?
+1
+:
+0;
+
+
+gbJoypad.DOWN=
+(
+(
+g.buttons[13] &&
+g.buttons[13].pressed
+)
+||
+(ax[1]||0)>.35
+)
+?
+1
+:
+0;
+
+
+gbJoypad.LEFT=
+(
+(
+g.buttons[14] &&
+g.buttons[14].pressed
+)
+||
+(ax[0]||0)<-.35
+)
+?
+1
+:
+0;
+
+
+gbJoypad.RIGHT=
+(
+(
+g.buttons[15] &&
+g.buttons[15].pressed
+)
+||
+(ax[0]||0)>.35
+)
+?
+1
+:
+0;
 
 }
 
