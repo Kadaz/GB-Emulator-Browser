@@ -2790,14 +2790,26 @@ case 0xCB:{
       ((this.a&0x0F)<<4)|
       ((this.a&0xF0)>>4);
 
-    this.setZ(this.a===0);
-    this.setN(false);
-    this.setH(false);
-    this.setC(false);
+    /* SWAP A flags */
+
+    this.f &= 0x0F;
+
+    if(this.a===0){
+      this.f |= 0x80;
+    }
 
     return 8;
 
   }
+
+  console.warn(
+    "UNSUPPORTED CB opcode 0x"+
+    cb.toString(16).padStart(2,"0")
+  );
+
+  return 8;
+
+}
 
   console.warn(
     "UNSUPPORTED CB opcode 0x"+
