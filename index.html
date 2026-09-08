@@ -1300,6 +1300,9 @@ requestAnimationFrame(gp);
    GAME LOOP
 ========================================================= */
 
+let gbDebugFrames=0;
+let gbDebugDone=false;
+
 function loop(t){
 
 let dt=
@@ -1312,12 +1315,20 @@ last
 last=t;
 
 
+/* =========================================================
+   NORMAL RETRO LAND
+========================================================= */
+
 update(
 Math.min(2,dt)
 );
 
 draw();
 
+
+/* =========================================================
+   GAME BOY
+========================================================= */
 
 if(gbROMLoaded){
 
@@ -1333,6 +1344,110 @@ gbTimerStep(used);
 gbPPUStep(used);
 
 cycles+=used;
+
+}
+
+
+/* =========================================================
+   DEBUG ONCE
+========================================================= */
+
+if(!gbDebugDone){
+
+gbDebugFrames++;
+
+if(gbDebugFrames>=60){
+
+gbDebugDone=true;
+
+let vramNonZero=0;
+
+for(
+let i=0;
+i<gbVRAM.length;
+i++
+){
+
+if(gbVRAM[i]!==0)
+vramNonZero++;
+
+}
+
+
+console.log(
+"===== GAME BOY STATUS ====="
+);
+
+console.log(
+"PC:",
+"0x"+
+gbCPU.pc
+.toString(16)
+.padStart(4,"0")
+);
+
+console.log(
+"SP:",
+"0x"+
+gbCPU.sp
+.toString(16)
+.padStart(4,"0")
+);
+
+console.log(
+"HALTED:",
+gbCPU.halted
+);
+
+console.log(
+"STOPPED:",
+gbCPU.stopped
+);
+
+console.log(
+"VRAM NON-ZERO:",
+vramNonZero
+);
+
+console.log(
+"LY:",
+gbPPU.ly
+);
+
+console.log(
+"==========================="
+);
+
+}
+
+}
+
+
+/* =========================================================
+   ONLY DRAW GAME BOY WHEN VRAM HAS DATA
+========================================================= */
+
+let hasVRAMData=false;
+
+for(
+let i=0;
+i<gbVRAM.length;
+i++
+){
+
+if(gbVRAM[i]!==0){
+
+hasVRAMData=true;
+break;
+
+}
+
+}
+
+
+if(hasVRAMData){
+
+gbPPUDrawBackground();
 
 }
 
