@@ -1385,9 +1385,10 @@ if(gbROMLoaded){
 
     const used=gbCPU.step();
 
-    gbTimerStep(used);
+gbTimerStep(used);
+gbPPUStep(used);
 
-    cycles+=used;
+cycles+=used;
 
 }
 
@@ -3126,7 +3127,23 @@ function gbTimerStep(cycles){
   }
 
 }
-   
+   function gbPPUStep(cycles){
+
+  gbPPU.cycles+=cycles;
+
+  while(gbPPU.cycles>=456){
+
+    gbPPU.cycles-=456;
+
+    gbPPU.ly++;
+
+    if(gbPPU.ly>=154){
+      gbPPU.ly=0;
+    }
+
+  }
+
+}
 /* =========================================================
    GAME BOY CARTRIDGE
 ========================================================= */
