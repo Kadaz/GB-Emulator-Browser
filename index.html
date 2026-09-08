@@ -2784,8 +2784,23 @@ case 0xCB:{
 
   const cb=this.fetch8();
 
-  console.log(
-    "CB opcode 0x"+
+  if(cb===0x37){
+
+    this.a=
+      ((this.a&0x0F)<<4)|
+      ((this.a&0xF0)>>4);
+
+    this.setZ(this.a===0);
+    this.setN(false);
+    this.setH(false);
+    this.setC(false);
+
+    return 8;
+
+  }
+
+  console.warn(
+    "UNSUPPORTED CB opcode 0x"+
     cb.toString(16).padStart(2,"0")
   );
 
