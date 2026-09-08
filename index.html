@@ -2784,13 +2784,16 @@ case 0xCB:{
 
   const cb=this.fetch8();
 
+  /*
+    CB 37 = SWAP A
+    Swap the upper and lower nibbles of A.
+  */
+
   if(cb===0x37){
 
     this.a=
       ((this.a&0x0F)<<4)|
       ((this.a&0xF0)>>4);
-
-    /* SWAP A flags */
 
     this.f &= 0x0F;
 
@@ -2801,15 +2804,6 @@ case 0xCB:{
     return 8;
 
   }
-
-  console.warn(
-    "UNSUPPORTED CB opcode 0x"+
-    cb.toString(16).padStart(2,"0")
-  );
-
-  return 8;
-
-}
 
   console.warn(
     "UNSUPPORTED CB opcode 0x"+
