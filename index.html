@@ -2780,7 +2780,18 @@ return 16;
 
 }
 
+case 0xCB:{
 
+  const cb=this.fetch8();
+
+  console.log(
+    "CB opcode 0x"+
+    cb.toString(16).padStart(2,"0")
+  );
+
+  return 8;
+
+}
 /* =========================================================
    UNKNOWN OPCODE
 ========================================================= */
