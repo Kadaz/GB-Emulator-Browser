@@ -200,6 +200,27 @@ r:0,
 j:0,
 d:0
 };
+   const keyboardInput={
+left:0,
+right:0,
+up:0,
+down:0,
+a:0,
+b:0
+};
+
+const gamepadInput={
+left:0,
+right:0,
+up:0,
+down:0,
+a:0,
+b:0
+};
+
+const virtualInput={
+a:0
+};
 
 let pause=0;
 let win=0;
@@ -1129,14 +1150,12 @@ e.stopPropagation();
 
 }
 
-k.j=1;
-gbJoypad.A=1;
+virtualInput.a=1;
 
 setTimeout(
 function(){
 
-k.j=0;
-gbJoypad.A=0;
+virtualInput.a=0;
 
 },
 100
@@ -1160,7 +1179,6 @@ function gameKey(e){
 
 let z=e.key.toLowerCase();
 
-
 if(
 z==="arrowleft" ||
 z==="arrowright" ||
@@ -1179,36 +1197,33 @@ e.preventDefault();
 
 }
 
+if(z==="arrowleft" || z==="a"){
+keyboardInput.left=1;
+}
 
-if(
-z==="arrowleft" ||
-z==="a"
-)
-k.l=1;
+if(z==="arrowright" || z==="d"){
+keyboardInput.right=1;
+}
 
+if(z==="arrowup" || z==="w"){
+keyboardInput.up=1;
+}
 
-if(
-z==="arrowright" ||
-z==="d"
-)
-k.r=1;
+if(z==="arrowdown"){
+keyboardInput.down=1;
+}
 
-
-if(
-z==="arrowup" ||
-z==="w" ||
-z===" "
-)
-k.j=1;
-
+if(z===" "){
+keyboardInput.a=1;
+}
 
 if(
 z==="z" ||
 z==="x" ||
 z==="shift"
-)
-k.d=1;
-
+){
+keyboardInput.b=1;
+}
 
 if(z==="escape"){
 
@@ -1225,7 +1240,6 @@ function gameKeyUp(e){
 
 let z=e.key.toLowerCase();
 
-
 if(
 z==="arrowleft" ||
 z==="arrowright" ||
@@ -1244,38 +1258,35 @@ e.preventDefault();
 
 }
 
+if(z==="arrowleft" || z==="a"){
+keyboardInput.left=0;
+}
 
-if(
-z==="arrowleft" ||
-z==="a"
-)
-k.l=0;
+if(z==="arrowright" || z==="d"){
+keyboardInput.right=0;
+}
 
+if(z==="arrowup" || z==="w"){
+keyboardInput.up=0;
+}
 
-if(
-z==="arrowright" ||
-z==="d"
-)
-k.r=0;
+if(z==="arrowdown"){
+keyboardInput.down=0;
+}
 
-
-if(
-z==="arrowup" ||
-z==="w" ||
-z===" "
-)
-k.j=0;
-
+if(z===" "){
+keyboardInput.a=0;
+}
 
 if(
 z==="z" ||
 z==="x" ||
 z==="shift"
-)
-k.d=0;
-
+){
+keyboardInput.b=0;
 }
 
+}
 
 document.addEventListener(
 "keydown",
@@ -1372,7 +1383,13 @@ function gp(){
 
 try{
 
-let pads=navigator.getGamepads?navigator.getGamepads():[];
+let pads=
+navigator.getGamepads
+?
+navigator.getGamepads()
+:
+[];
+
 let g=null;
 
 for(const z of pads){
@@ -1386,12 +1403,27 @@ break;
 
 }
 
+
+/* =========================================================
+   RESET GAMEPAD STATE
+========================================================= */
+
+gamepadInput.left=0;
+gamepadInput.right=0;
+gamepadInput.up=0;
+gamepadInput.down=0;
+gamepadInput.a=0;
+gamepadInput.b=0;
+
+
 if(g){
 
 let ax=g.axes||[];
 
 
-/* D-PAD */
+/* =========================================================
+   D-PAD
+========================================================= */
 
 let left=false;
 let right=false;
@@ -1399,37 +1431,57 @@ let up=false;
 let down=false;
 
 
-/* Standard D-pad */
+/* STANDARD GAMEPAD D-PAD */
 
-if(g.buttons[12]&&g.buttons[12].pressed)
+if(
+g.buttons[12] &&
+g.buttons[12].pressed
+){
 up=true;
+}
 
-if(g.buttons[13]&&g.buttons[13].pressed)
+if(
+g.buttons[13] &&
+g.buttons[13].pressed
+){
 down=true;
+}
 
-if(g.buttons[14]&&g.buttons[14].pressed)
+if(
+g.buttons[14] &&
+g.buttons[14].pressed
+){
 left=true;
+}
 
-if(g.buttons[15]&&g.buttons[15].pressed)
+if(
+g.buttons[15] &&
+g.buttons[15].pressed
+){
 right=true;
+}
 
 
-/* Left stick */
+/* LEFT STICK */
 
-if((ax[0]||0)<-.35)
+if((ax[0]||0)<-.35){
 left=true;
+}
 
-if((ax[0]||0)>.35)
+if((ax[0]||0)>.35){
 right=true;
+}
 
-if((ax[1]||0)<-.35)
+if((ax[1]||0)<-.35){
 up=true;
+}
 
-if((ax[1]||0)>.35)
+if((ax[1]||0)>.35){
 down=true;
+}
 
 
-/* DualSense D-pad axis */
+/* DUALSENSE D-PAD AXIS */
 
 if(Number.isFinite(ax[9])){
 
@@ -1471,55 +1523,74 @@ left=true;
 up=true;
 }
 
-}
 
+/* SAVE GAMEPAD D-PAD */
 
-/* FAKE GAME */
-
-k.l=left?1:0;
-k.r=right?1:0;
-
-
-/* GAME BOY D-PAD */
-
-gbJoypad.LEFT=left?1:0;
-gbJoypad.RIGHT=right?1:0;
-gbJoypad.UP=up?1:0;
-gbJoypad.DOWN=down?1:0;
-
-
-/* X = A / JUMP */
-
-k.j=
-g.buttons[0]&&g.buttons[0].pressed
+gamepadInput.left=
+left
 ?
 1
 :
 0;
 
-gbJoypad.A=k.j;
-
-
-/* O = B / DASH */
-
-k.d=
-g.buttons[1]&&g.buttons[1].pressed
+gamepadInput.right=
+right
 ?
 1
 :
 0;
 
-gbJoypad.B=k.d;
+gamepadInput.up=
+up
+?
+1
+:
+0;
+
+gamepadInput.down=
+down
+?
+1
+:
+0;
+
+
+/* X = GAME BOY A */
+
+gamepadInput.a=
+(
+g.buttons[0] &&
+g.buttons[0].pressed
+)
+?
+1
+:
+0;
+
+
+/* O = GAME BOY B */
+
+gamepadInput.b=
+(
+g.buttons[1] &&
+g.buttons[1].pressed
+)
+?
+1
+:
+0;
 
 
 /* OPTIONS = PAUSE */
 
 let options=
-g.buttons[9]&&g.buttons[9].pressed;
+g.buttons[9] &&
+g.buttons[9].pressed;
 
 if(options&&!opt){
 
 pause=!pause;
+
 opt=1;
 
 }
@@ -1532,8 +1603,128 @@ opt=0;
 
 }
 
-}
-catch(e){}
+
+/* =========================================================
+   COMBINE KEYBOARD + GAMEPAD + VIRTUAL
+========================================================= */
+
+
+/* FAKE GAME */
+
+k.l=
+(
+keyboardInput.left ||
+gamepadInput.left
+)
+?
+1
+:
+0;
+
+k.r=
+(
+keyboardInput.right ||
+gamepadInput.right
+)
+?
+1
+:
+0;
+
+k.j=
+(
+keyboardInput.up ||
+keyboardInput.a ||
+gamepadInput.a ||
+gamepadInput.up ||
+virtualInput.a
+)
+?
+1
+:
+0;
+
+k.d=
+(
+keyboardInput.b ||
+gamepadInput.b
+)
+?
+1
+:
+0;
+
+
+/* =========================================================
+   GAME BOY D-PAD
+========================================================= */
+
+gbJoypad.LEFT=
+(
+keyboardInput.left ||
+gamepadInput.left
+)
+?
+1
+:
+0;
+
+gbJoypad.RIGHT=
+(
+keyboardInput.right ||
+gamepadInput.right
+)
+?
+1
+:
+0;
+
+gbJoypad.UP=
+(
+keyboardInput.up ||
+gamepadInput.up
+)
+?
+1
+:
+0;
+
+gbJoypad.DOWN=
+(
+keyboardInput.down ||
+gamepadInput.down
+)
+?
+1
+:
+0;
+
+
+/* =========================================================
+   GAME BOY A / B
+========================================================= */
+
+gbJoypad.A=
+(
+keyboardInput.a ||
+gamepadInput.a ||
+virtualInput.a
+)
+?
+1
+:
+0;
+
+gbJoypad.B=
+(
+keyboardInput.b ||
+gamepadInput.b
+)
+?
+1
+:
+0;
+
 
 requestAnimationFrame(gp);
 
