@@ -1,3 +1,4 @@
+```html
 <!doctype html>
 
 <html>
@@ -152,7 +153,7 @@ tabindex="0"></canvas>
 
 <div id="hint">
 
-DualSense: D-pad / Left Stick = Move · X = Jump · O = Dash · OPTIONS = Pause
+DualSense: D-pad / Left Stick = Move · X = A / Jump · O = B / Dash · OPTIONS = Pause
 
 </div>
 
@@ -1360,15 +1361,58 @@ beep(700,.05);
 
 /* =========================================================
    GAMEPAD
-   ORIGINAL DUALSENSE MAPPING PRESERVED
-   + GAME BOY INPUT
+   ORIGINAL RETRO LAND MAPPING PRESERVED
+   GAME BOY USES THE SAME DUALSENSE INPUT
 ========================================================= */
+
+/*
+   This is the important part.
+
+   Standard DualSense mapping used by the old Retro:
+
+   0  = X
+   1  = O
+   9  = OPTIONS
+
+   D-pad:
+   12 = UP
+   13 = DOWN
+   14 = LEFT
+   15 = RIGHT
+
+   Left stick:
+   axes[0] = LEFT / RIGHT
+   axes[1] = UP / DOWN
+*/
+
+
+function gamepadButtonPressed(g,index){
+
+const b=g.buttons && g.buttons[index];
+
+if(!b)
+return false;
+
+
+/*
+   PS5 browser normally exposes .pressed.
+   Some Gamepad implementations expose useful
+   information through .value instead.
+*/
+
+return !!(
+b.pressed ||
+(b.value!==undefined && b.value>.5)
+);
+
+}
+
 
 function gp(){
 
 try{
 
-let pads=
+const pads=
 navigator.getGamepads
 ?
 navigator.getGamepads()
@@ -1378,13 +1422,23 @@ navigator.getGamepads()
 let g=null;
 
 
+/*
+   Same approach as the old Retro:
+   use the first valid connected gamepad.
+*/
+
 for(
-const z of pads
+let i=0;
+i<pads.length;
+i++
 ){
 
-if(z){
+if(
+pads[i] &&
+pads[i].connected!==false
+){
 
-g=z;
+g=pads[i];
 break;
 
 }
@@ -1394,56 +1448,150 @@ break;
 
 if(g){
 
-let ax=g.axes||[];
+const ax=g.axes||[];
 
 
 /* =====================================================
-   ORIGINAL RETRO LAND DUALSENSE MAPPING
+   READ DUALSENSE ONCE
 ===================================================== */
 
-/* D-PAD / LEFT STICK */
+const leftStick=
+Number.isFinite(ax[0])
+?
+ax[0]
+:
+0;
 
-k.l=
-!!(
-g.buttons[14] &&
-g.buttons[14].pressed
-)
-||
-(ax[0]||0)<-.35;
-
-
-k.r=
-!!(
-g.buttons[15] &&
-g.buttons[15].pressed
-)
-||
-(ax[0]||0)>.35;
+const verticalStick=
+Number.isFinite(ax[1])
+?
+ax[1]
+:
+0;
 
 
-/* X */
+/* =====================================================
+   D-PAD
+   EXACT OLD RETRO MAPPING
+===================================================== */
 
-k.j=!!(
-g.buttons[0] &&
-g.buttons[0].pressed
-);
+const padLeft=
+gamepadButtonPressed(g,14);
+
+const padRight=
+gamepadButtonPressed(g,15);
+
+const padUp=
+gamepadButtonPressed(g,12);
+
+const padDown=
+gamepadButtonPressed(g,13);
 
 
-/* O */
+/* =====================================================
+   COMBINED DIRECTIONS
+   D-PAD OR LEFT STICK
+===================================================== */
 
-k.d=!!(
-g.buttons[1] &&
-g.buttons[1].pressed
-);
+const left=
+padLeft ||
+leftStick<-.35;
+
+const right=
+padRight ||
+leftStick>.35;
+
+const up=
+padUp ||
+verticalStick<-.35;
+
+const down=
+padDown ||
+verticalStick>.35;
 
 
-/* OPTIONS */
+/* =====================================================
+   ORIGINAL RETRO LAND INPUT
+   DO NOT CHANGE
+===================================================== */
 
-if(
-g.buttons[9] &&
-g.buttons[9].pressed &&
-!opt
-){
+k.l=left;
+
+k.r=right;
+
+k.j=
+gamepadButtonPressed(g,0);
+
+k.d=
+gamepadButtonPressed(g,1);
+
+
+/* =====================================================
+   GAME BOY INPUT
+   SAME PHYSICAL CONTROLS
+===================================================== */
+
+/*
+   X       -> Game Boy A
+   O       -> Game Boy B
+
+   D-pad / Left Stick -> Game Boy D-pad
+
+   OPTIONS remains PAUSE.
+   It is NOT START.
+*/
+
+gbJoypad.A=
+gamepadButtonPressed(g,0)
+?
+1
+:
+0;
+
+gbJoypad.B=
+gamepadButtonPressed(g,1)
+?
+1
+:
+0;
+
+gbJoypad.UP=
+up
+?
+1
+:
+0;
+
+gbJoypad.DOWN=
+down
+?
+1
+:
+0;
+
+gbJoypad.LEFT=
+left
+?
+1
+:
+0;
+
+gbJoypad.RIGHT=
+right
+?
+1
+:
+0;
+
+
+/* =====================================================
+   OPTIONS -> PAUSE ONLY
+===================================================== */
+
+const options=
+gamepadButtonPressed(g,9);
+
+if(options&&!opt){
 
 pause=!pause;
 
@@ -1451,117 +1599,23 @@ opt=1;
 
 }
 
-if(
-g.buttons[9] &&
-!g.buttons[9].pressed
-){
+if(!options){
 
 opt=0;
 
 }
 
+}
 
-/* =====================================================
-   GAME BOY DUALSENSE INPUT
-===================================================== */
+}
+catch(e){
 
 /*
-   Game Boy A  = DualSense X       = button 0
-   Game Boy B  = DualSense O       = button 1
-
-   D-pad:
-   Up    = button 12 / left stick up
-   Down  = button 13 / left stick down
-   Left  = button 14 / left stick left
-   Right = button 15 / left stick right
+   Never stop the polling loop if the browser
+   temporarily returns an invalid Gamepad object.
 */
 
-
-gbJoypad.A=
-(
-g.buttons[0] &&
-g.buttons[0].pressed
-)
-?
-1
-:
-0;
-
-
-gbJoypad.B=
-(
-g.buttons[1] &&
-g.buttons[1].pressed
-)
-?
-1
-:
-0;
-
-
-gbJoypad.UP=
-(
-(
-g.buttons[12] &&
-g.buttons[12].pressed
-)
-||
-(ax[1]||0)<-.35
-)
-?
-1
-:
-0;
-
-
-gbJoypad.DOWN=
-(
-(
-g.buttons[13] &&
-g.buttons[13].pressed
-)
-||
-(ax[1]||0)>.35
-)
-?
-1
-:
-0;
-
-
-gbJoypad.LEFT=
-(
-(
-g.buttons[14] &&
-g.buttons[14].pressed
-)
-||
-(ax[0]||0)<-.35
-)
-?
-1
-:
-0;
-
-
-gbJoypad.RIGHT=
-(
-(
-g.buttons[15] &&
-g.buttons[15].pressed
-)
-||
-(ax[0]||0)>.35
-)
-?
-1
-:
-0;
-
 }
-
-}
-catch(e){}
 
 
 requestAnimationFrame(gp);
@@ -5400,3 +5454,4 @@ loadGBROM();
 
 </body>
 </html>
+```
