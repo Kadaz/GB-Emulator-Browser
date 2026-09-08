@@ -1327,9 +1327,6 @@ const targetCycles=70224;
 
 while(cycles<targetCycles){
 
-if(gbCPU.halted || gbCPU.stopped)
-break;
-
 const used=gbCPU.step();
 
 gbTimerStep(used);
@@ -1581,8 +1578,118 @@ return 4;
 
 }
 
+serviceInterrupts(){
 
+const ie=
+gbMemory[0xFFFF];
+
+const iff=
+gbMemory[0xFF0F];
+
+const pending=
+ie&iff&0x1F;
+
+
+if(!pending)
+return 0;
+
+
+/*
+  HALT is released when an interrupt becomes pending.
+*/
+
+if(this.halted){
+
+this.halted=false;
+
+}
+
+
+/*
+  IME disabled:
+  interrupt is not serviced yet.
+*/
+
+if(!this.ime)
+return 0;
+
+
+let vector=0;
+let mask=0;
+
+
+/* VBlank */
+
+if(pending&0x01){
+
+vector=0x40;
+mask=0x01;
+
+}
+
+
+/* LCD STAT */
+
+else if(pending&0x02){
+
+vector=0x48;
+mask=0x02;
+
+}
+
+
+/* Timer */
+
+else if(pending&0x04){
+
+vector=0x50;
+mask=0x04;
+
+}
+
+
+/* Serial */
+
+else if(pending&0x08){
+
+vector=0x58;
+mask=0x08;
+
+}
+
+
+/* Joypad */
+
+else if(pending&0x10){
+
+vector=0x60;
+mask=0x10;
+
+}
+
+
+if(!vector)
+return 0;
+
+
+gbMemory[0xFF0F]&=~mask;
+
+this.ime=false;
+
+this.push16(this.pc);
+
+this.pc=vector;
+
+return 20;
+
+}
 step(){
+
+const interruptCycles=
+this.serviceInterrupts();
+
+if(interruptCycles)
+return interruptCycles;
 
 if(this.halted)
 return 4;
@@ -1590,9 +1697,7 @@ return 4;
 if(this.stopped)
 return 4;
 
-
 const op=this.fetch8();
-
 
 /* =========================================================
    REGISTER ACCESS
@@ -2782,35 +2887,193 @@ return 16;
 
 case 0xCB:{
 
-  const cb=this.fetch8();
+const cb=this.fetch8();
 
-  /*
-    CB 37 = SWAP A
-    Swap the upper and lower nibbles of A.
-  */
+const r=cb&7;
+const group=cb>>6;
+const bit=(cb>>3)&7;
 
-  if(cb===0x37){
+let value=getR(r);
 
-    this.a=
-      ((this.a&0x0F)<<4)|
-      ((this.a&0xF0)>>4);
 
-    this.f &= 0x0F;
+/* =========================================================
+   ROTATE / SHIFT
+========================================================= */
 
-    if(this.a===0){
-      this.f |= 0x80;
-    }
+if(group===0){
 
-    return 8;
+const operation=(cb>>3)&7;
 
-  }
+let result=0;
+let carry=0;
 
-  console.warn(
-    "UNSUPPORTED CB opcode 0x"+
-    cb.toString(16).padStart(2,"0")
-  );
+switch(operation){
 
-  return 8;
+/* RLC */
+
+case 0:
+
+carry=(value&0x80)!==0;
+
+result=((value<<1)&0xFF)|
+(carry?1:0);
+
+break;
+
+
+/* RRC */
+
+case 1:
+
+carry=(value&1)!==0;
+
+result=(value>>1)|
+(carry?0x80:0);
+
+break;
+
+
+/* RL */
+
+case 2:{
+
+const oldCarry=this.CARRY?1:0;
+
+carry=(value&0x80)!==0;
+
+result=((value<<1)&0xFF)|oldCarry;
+
+break;
+
+}
+
+
+/* RR */
+
+case 3:{
+
+const oldCarry=this.CARRY?1:0;
+
+carry=(value&1)!==0;
+
+result=(value>>1)|
+(oldCarry?0x80:0);
+
+break;
+
+}
+
+
+/* SLA */
+
+case 4:
+
+carry=(value&0x80)!==0;
+
+result=(value<<1)&0xFF;
+
+break;
+
+
+/* SRA */
+
+case 5:
+
+carry=(value&1)!==0;
+
+result=
+(value>>1)|
+(value&0x80);
+
+break;
+
+
+/* SWAP */
+
+case 6:
+
+result=
+((value&0x0F)<<4)|
+((value&0xF0)>>4);
+
+carry=0;
+
+break;
+
+
+/* SRL */
+
+case 7:
+
+carry=(value&1)!==0;
+
+result=value>>1;
+
+break;
+
+}
+
+
+setR(r,result);
+
+this.Z=(result===0);
+this.N=0;
+this.H=0;
+this.CARRY=carry;
+
+return r===6 ? 16 : 8;
+
+}
+
+
+/* =========================================================
+   BIT
+========================================================= */
+
+if(group===1){
+
+this.Z=(value&(1<<bit))===0;
+this.N=0;
+this.H=1;
+
+/* CARRY remains unchanged */
+
+return r===6 ? 12 : 8;
+
+}
+
+
+/* =========================================================
+   RES
+========================================================= */
+
+if(group===2){
+
+value&=~(1<<bit);
+
+setR(r,value);
+
+return r===6 ? 16 : 8;
+
+}
+
+
+/* =========================================================
+   SET
+========================================================= */
+
+if(group===3){
+
+value|=(1<<bit);
+
+setR(r,value);
+
+return r===6 ? 16 : 8;
+
+}
+
+
+return 8;
 
 }
 /* =========================================================
@@ -2886,27 +3149,106 @@ const image=
 ctx.createImageData(160,144);
 
 
+/* =========================================================
+   GAME BOY PALETTE
+========================================================= */
+
+const palette=[
+255,
+192,
+96,
+0
+];
+
+
+/* =========================================================
+   PALETTE COLOR
+========================================================= */
+
+function shadeFromPalette(color){
+
+return palette[
+(gbPPU.bgp>>(color*2))&3
+];
+
+}
+
+
+/* =========================================================
+   BACKGROUND
+========================================================= */
+
 for(let y=0;y<144;y++){
 
-for(let x=0;x<160;x++){
+for(let screenX=0;screenX<160;screenX++){
 
-const tileX=x>>3;
-const tileY=y>>3;
+const worldX=
+(screenX+gbPPU.scx)&255;
+
+const worldY=
+(y+gbPPU.scy)&255;
+
+
+const tileX=
+worldX>>3;
+
+const tileY=
+worldY>>3;
+
+
+const mapBase=
+(gbPPU.lcdc&0x08)
+?
+0x9C00
+:
+0x9800;
+
 
 const mapAddress=
-0x9800+
+mapBase+
 tileY*32+
 tileX;
+
 
 const tileIndex=
 gbRead(mapAddress);
 
-const tileAddress=
+
+let tileAddress;
+
+
+/*
+  LCDC bit 4:
+
+  1 = unsigned tile numbers at 8000
+  0 = signed tile numbers at 8800
+*/
+
+if(gbPPU.lcdc&0x10){
+
+tileAddress=
 0x8000+
 tileIndex*16;
 
+}
+else{
+
+const signedTile=
+tileIndex<128
+?
+tileIndex
+:
+tileIndex-256;
+
+tileAddress=
+0x9000+
+signedTile*16;
+
+}
+
+
 const row=
-y&7;
+worldY&7;
 
 const low=
 gbRead(tileAddress+row*2);
@@ -2915,21 +3257,17 @@ const high=
 gbRead(tileAddress+row*2+1);
 
 const bit=
-7-(x&7);
+7-(worldX&7);
 
 const color=
 ((high>>bit)&1)*2+
 ((low>>bit)&1);
 
-const shade=[
-255,
-192,
-96,
-0
-][color];
+const shade=
+shadeFromPalette(color);
 
 const i=
-(y*160+x)*4;
+(y*160+screenX)*4;
 
 image.data[i]=shade;
 image.data[i+1]=shade;
@@ -2940,6 +3278,141 @@ image.data[i+3]=255;
 
 }
 
+
+/* =========================================================
+   SPRITES
+========================================================= */
+
+if(gbPPU.lcdc&0x02){
+
+for(let sprite=0;sprite<40;sprite++){
+
+const base=
+sprite*4;
+
+const sy=
+gbOAM[base]-16;
+
+const sx=
+gbOAM[base+1]-8;
+
+const tile=
+gbOAM[base+2];
+
+const flags=
+gbOAM[base+3];
+
+const flipX=
+!!(flags&0x20);
+
+const flipY=
+!!(flags&0x40);
+
+const behindBG=
+!!(flags&0x80);
+
+
+for(let py=0;py<8;py++){
+
+let tileY=
+flipY
+?
+7-py
+:
+py;
+
+
+const low=
+gbRead(
+0x8000+
+tile*16+
+tileY*2
+);
+
+const high=
+gbRead(
+0x8000+
+tile*16+
+tileY*2+1
+);
+
+
+for(let px=0;px<8;px++){
+
+let tileX=
+flipX
+?
+px
+:
+7-px;
+
+
+const color=
+((high>>tileX)&1)*2+
+((low>>tileX)&1);
+
+
+if(color===0)
+continue;
+
+
+const screenX=
+sx+px;
+
+const screenY=
+sy+py;
+
+
+if(
+screenX<0 ||
+screenX>=160 ||
+screenY<0 ||
+screenY>=144
+)
+continue;
+
+
+/*
+  For now use the BG color underneath
+  only when the sprite priority bit is set.
+*/
+
+if(behindBG){
+
+const existing=
+image.data[
+(screenY*160+screenX)*4
+];
+
+if(existing!==255)
+continue;
+
+}
+
+
+const shade=
+palette[
+color
+];
+
+
+const i=
+(screenY*160+screenX)*4;
+
+image.data[i]=shade;
+image.data[i+1]=shade;
+image.data[i+2]=shade;
+image.data[i+3]=255;
+
+}
+
+}
+
+}
+
+}
+
+
 ctx.putImageData(
 image,
 0,
@@ -2947,8 +3420,6 @@ image,
 );
 
 }
-
-
 /* =========================================================
    GAME BOY TIMER
 ========================================================= */
@@ -3026,16 +3497,34 @@ function gbPPUStep(cycles){
 
 gbPPU.cycles+=cycles;
 
-while(
-gbPPU.cycles>=456
-){
+while(gbPPU.cycles>=456){
 
 gbPPU.cycles-=456;
 
 gbPPU.ly++;
 
-if(gbPPU.ly>=154)
+
+/*
+  LY 144 = start of VBlank.
+*/
+
+if(gbPPU.ly===144){
+
+gbMemory[0xFF0F]|=0x01;
+
+}
+
+
+/*
+  Full frame:
+  144 visible lines + 10 VBlank lines.
+*/
+
+if(gbPPU.ly>=154){
+
 gbPPU.ly=0;
+
+}
 
 }
 
