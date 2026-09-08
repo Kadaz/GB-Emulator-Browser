@@ -2943,7 +2943,19 @@ return 4;
 /* =========================================================
    UNKNOWN OPCODE
 ========================================================= */
-case 0xE0:{
+case 0xEA:{
+
+  const addr=this.fetch16();
+
+  this.write(
+    addr,
+    this.a
+  );
+
+  return 16;
+
+}
+   case 0xE0:{
 
   const offset=this.fetch8();
 
