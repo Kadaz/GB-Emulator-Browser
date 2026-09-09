@@ -5254,12 +5254,10 @@ image,
 
 const GB_CYCLES_PER_FRAME=70224;
 
-
 function gbRunFrame(){
 
 if(!gbROMLoaded)
 return;
-
 
 let cycles=0;
 
@@ -5282,12 +5280,14 @@ cycles+=actual;
 
 }
 
-
+/*
+   Render the frame using the scroll state
+   captured for each scanline.
+*/
 gbPPUDrawBackground();
 
 }
-
-
+   
 /* =========================================================
    TIMER
 ========================================================= */
