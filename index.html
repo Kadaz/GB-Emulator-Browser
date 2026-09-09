@@ -2410,8 +2410,6 @@ return;
 
 if(addr===0xFF44){
 
-gbPPU.ly=0;
-
 return;
 
 }
@@ -3258,13 +3256,6 @@ return r===6 ? 12 : 4;
 /* =========================================================
    OPCODES
 ========================================================= */
-if(!this.opcodeCount){
-this.opcodeCount={};
-}
-
-this.opcodeCount[op]=
-(this.opcodeCount[op]||0)+1;
-
 
 switch(op){
 
