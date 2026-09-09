@@ -189,6 +189,23 @@ const H=144;
 
 x.imageSmoothingEnabled=false;
 
+   /* =========================================================
+   PERFORMANCE BUFFERS
+========================================================= */
+
+const gbCtx=x;
+
+const gbImage=
+gbCtx.createImageData(
+160,
+144
+);
+
+const gbBGColorIndex=
+new Uint8Array(
+160*144
+);
+
 
 /* =========================================================
    INPUT
@@ -4875,10 +4892,9 @@ palette>>
 
 function gbPPUDrawBackground(){
 
-const ctx=c.getContext("2d");
+const ctx=gbCtx;
 
-const image=
-ctx.createImageData(160,144);
+const image=gbImage;
 
 const palette=[
 255,
@@ -4888,7 +4904,8 @@ const palette=[
 ];
 
 const bgColorIndex=
-new Uint8Array(160*144);
+gbBGColorIndex;
+bgColorIndex.fill(0);
 
 
 /* BACKGROUND */
@@ -4927,7 +4944,7 @@ tileY*32+
 tileX;
 
 const tileIndex=
-gbRead(mapAddress);
+gbVRAM[mapAddress-0x8000];
 
 let tileAddress;
 
@@ -4958,16 +4975,18 @@ const row=
 worldY&7;
 
 const low=
-gbRead(
+gbVRAM[
 tileAddress+
-row*2
-);
+row*2-
+0x8000
+];
 
 const high=
-gbRead(
+gbVRAM[
 tileAddress+
-row*2+1
-);
+row*2+1-
+0x8000
+];
 
 const bit=
 7-(worldX&7);
@@ -5047,11 +5066,12 @@ const mapBase=
 0x9800;
 
 const tileIndex=
-gbRead(
+gbVRAM[
 mapBase+
 tileY*32+
-tileX
-);
+tileX-
+0x8000
+];
 
 let tileAddress;
 
@@ -5081,16 +5101,18 @@ const row=
 windowY&7;
 
 const low=
-gbRead(
+gbVRAM[
 tileAddress+
-row*2
-);
+row*2-
+0x8000
+];
 
 const high=
-gbRead(
+gbVRAM[
 tileAddress+
-row*2+1
-);
+row*2+1-
+0x8000
+];
 
 const bit=
 7-(windowX&7);
