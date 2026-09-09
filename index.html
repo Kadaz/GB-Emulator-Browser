@@ -1787,7 +1787,11 @@ wy:0x00,
 wx:0x00,
 ly:0x00,
 cycles:0,
-mode:2
+mode:2,
+
+/* Scroll values captured for each scanline */
+lineSCX:new Uint8Array(144),
+lineSCY:new Uint8Array(144)
 
 };
 
@@ -2519,6 +2523,11 @@ gbPPU.ly=0;
 gbPPU.cycles=0;
 gbPPU.mode=2;
 
+   gbPPU.lineSCX.fill(0);
+gbPPU.lineSCY.fill(0);
+
+gbPPU.lineSCX[0]=gbPPU.scx;
+gbPPU.lineSCY[0]=gbPPU.scy;
 
 /* JOYPAD RESET */
 
@@ -4758,6 +4767,7 @@ return;
 
 gbPPU.cycles+=cycles;
 
+
 while(gbPPU.cycles>=456){
 
 gbPPU.cycles-=456;
@@ -4765,6 +4775,7 @@ gbPPU.cycles-=456;
 gbPPU.ly++;
 
 
+/* Start of VBlank */
 if(gbPPU.ly===144){
 
 gbMemory[0xFF0F]|=0x01;
@@ -4772,9 +4783,30 @@ gbMemory[0xFF0F]|=0x01;
 }
 
 
+/*
+   Capture scrolling for the new scanline.
+
+   The renderer will later use the SCX/SCY
+   that belongs to each individual line
+   instead of using the final values for
+   the entire frame.
+*/
+
+if(gbPPU.ly<144){
+
+gbPPU.lineSCX[gbPPU.ly]=gbPPU.scx;
+gbPPU.lineSCY[gbPPU.ly]=gbPPU.scy;
+
+}
+
+
+/* New frame */
 if(gbPPU.ly>=154){
 
 gbPPU.ly=0;
+
+gbPPU.lineSCX[0]=gbPPU.scx;
+gbPPU.lineSCY[0]=gbPPU.scy;
 
 }
 
@@ -4784,7 +4816,6 @@ gbPPU.ly=0;
 gbUpdateSTAT();
 
 }
-
 
 /* =========================================================
    PPU PALETTE
@@ -4834,10 +4865,10 @@ let color=0;
 if(gbPPU.lcdc&0x01){
 
 const worldX=
-(screenX+gbPPU.scx)&255;
+(screenX+gbPPU.lineSCX[y])&255;
 
 const worldY=
-(y+gbPPU.scy)&255;
+(y+gbPPU.lineSCY[y])&255;
 
 const tileX=
 worldX>>3;
