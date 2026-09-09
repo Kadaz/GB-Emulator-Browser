@@ -1789,6 +1789,8 @@ ly:0x00,
 cycles:0,
 mode:2,
 
+statIRQLine:false,
+
 /* Scroll values captured for each scanline */
 lineSCX:new Uint8Array(144),
 lineSCY:new Uint8Array(144)
@@ -2520,6 +2522,7 @@ gbPPU.wx=0;
 gbPPU.ly=0;
 gbPPU.cycles=0;
 gbPPU.mode=2;
+gbPPU.statIRQLine=false;
 
    gbPPU.lineSCX.fill(0);
 gbPPU.lineSCY.fill(0);
@@ -4731,20 +4734,64 @@ gbPPU.mode=0;
 }
 
 
+/* STAT register */
+
 let stat=
 gbPPU.stat&0x78;
 
 stat|=
 gbPPU.mode;
 
-if(gbPPU.ly===gbPPU.lyc)
+const coincidence=
+gbPPU.ly===gbPPU.lyc;
+
+if(coincidence){
+
 stat|=0x04;
+
+}
+
+
+/*
+   LCD STAT interrupt sources.
+
+   Bit 6 = LY=LYC
+   Bit 5 = Mode 2
+   Bit 4 = Mode 1
+   Bit 3 = Mode 0
+*/
+
+let statIRQ=false;
+
+if(
+(coincidence && (gbPPU.stat&0x40)) ||
+(gbPPU.mode===2 && (gbPPU.stat&0x20)) ||
+(gbPPU.mode===1 && (gbPPU.stat&0x10)) ||
+(gbPPU.mode===0 && (gbPPU.stat&0x08))
+){
+
+statIRQ=true;
+
+}
+
+
+/*
+   STAT interrupts trigger on a rising edge
+   of the selected interrupt condition.
+*/
+
+if(statIRQ && !gbPPU.statIRQLine){
+
+gbMemory[0xFF0F]|=0x02;
+
+}
+
+gbPPU.statIRQLine=statIRQ;
 
 gbPPU.stat=
 stat|0x80;
 
 }
-
 
 /* =========================================================
    PPU STEP
