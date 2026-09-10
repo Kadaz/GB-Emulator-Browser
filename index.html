@@ -73,7 +73,7 @@ outline:3px solid #dce9b8;outline-offset:3px;
 </div>
 
 <div id="hint">
-DualSense: D-pad / Left Stick = Move · X = A / Jump · O = B / Dash · OPTIONS = Pause
+DualSense: D-pad / Left Stick = Move · X = A / Jump · O = B / OPTIONS = Pause
 </div>
 
 <div id="gbButtons">
@@ -1629,6 +1629,103 @@ new Uint8Array(0xA0);
 
 
 /* =========================================================
+   PPU TILE CACHE
+========================================================= */
+
+/*
+   384 physical Game Boy tile slots.
+
+   0-255  = 0x8000-0x8FF0
+   256-383 = 0x9000-0x97F0
+
+   The second area is needed because the signed tile mode
+   uses the 0x8800-0x97FF tile region.
+*/
+
+const gbTileCache=
+new Uint8Array(384*64);
+
+const gbTileValid=
+new Uint8Array(384);
+
+
+function gbInvalidateTile(vramOffset){
+
+const tile=
+vramOffset>>4;
+
+if(tile<384){
+
+gbTileValid[tile]=0;
+
+}
+
+}
+
+
+function gbDecodeTile(tile){
+
+if(gbTileValid[tile])
+return;
+
+
+const vramBase=
+tile<<4;
+
+const cacheBase=
+tile<<6;
+
+for(let row=0;row<8;row++){
+
+const low=
+gbVRAM[vramBase+(row<<1)];
+
+const high=
+gbVRAM[vramBase+(row<<1)+1];
+
+const out=
+cacheBase+(row<<3);
+
+gbTileCache[out]=
+((high>>7)&1)*2+
+((low>>7)&1);
+
+gbTileCache[out+1]=
+((high>>6)&1)*2+
+((low>>6)&1);
+
+gbTileCache[out+2]=
+((high>>5)&1)*2+
+((low>>5)&1);
+
+gbTileCache[out+3]=
+((high>>4)&1)*2+
+((low>>4)&1);
+
+gbTileCache[out+4]=
+((high>>3)&1)*2+
+((low>>3)&1);
+
+gbTileCache[out+5]=
+((high>>2)&1)*2+
+((low>>2)&1);
+
+gbTileCache[out+6]=
+((high>>1)&1)*2+
+((low>>1)&1);
+
+gbTileCache[out+7]=
+(high&1)*2+
+(low&1);
+
+}
+
+gbTileValid[tile]=1;
+
+}
+
+
+/* =========================================================
    GAME BOY CARTRIDGE
 ========================================================= */
 
@@ -2088,9 +2185,13 @@ addr>=0x8000 &&
 addr<=0x9FFF
 ){
 
-gbVRAM[
-addr-0x8000
-]=value;
+const offset=
+addr-0x8000;
+
+gbVRAM[offset]=value;
+
+/* Mark the physical tile as dirty. */
+gbInvalidateTile(offset);
 
 return;
 
@@ -2379,6 +2480,8 @@ gbOAM.fill(0);
 
 gbCartridge.ram.fill(0);
 
+gbTileValid.fill(0);
+
 gbTimer.div=0;
 gbTimer.tima=0;
 gbTimer.tma=0;
@@ -2548,7 +2651,7 @@ v&0xFF;
    FLAGS
 ========================================================= */
 
-get Z(){
+get Z{
 return !!(this.f&0x80);
 }
 
@@ -4771,14 +4874,14 @@ palette>>
 
 
 /* =========================================================
-   PPU DRAW
+   PPU DRAW — OPTIMIZED TILE CACHE
 ========================================================= */
 
 function gbPPUDrawBackground(){
 
 const ctx=gbCtx;
-
 const image=gbImage;
+const data=image.data;
 
 const palette=[
 255,
@@ -4793,28 +4896,11 @@ gbBGColorIndex;
 bgColorIndex.fill(0);
 
 
-/* BACKGROUND */
-
-for(let y=0;y<144;y++){
-
-for(let screenX=0;screenX<160;screenX++){
-
-let color=0;
-
+/* =========================================================
+   BACKGROUND
+========================================================= */
 
 if(gbPPU.lcdc&0x01){
-
-const worldX=
-(screenX+gbPPU.lineSCX[y])&255;
-
-const worldY=
-(y+gbPPU.lineSCY[y])&255;
-
-const tileX=
-worldX>>3;
-
-const tileY=
-worldY>>3;
 
 const mapBase=
 (gbPPU.lcdc&0x08)
@@ -4823,9 +4909,33 @@ const mapBase=
 :
 0x9800;
 
+const signedMode=
+!(gbPPU.lcdc&0x10);
+
+for(let y=0;y<144;y++){
+
+const worldY=
+(y+gbPPU.lineSCY[y])&255;
+
+const tileY=
+worldY>>3;
+
+const row=
+worldY&7;
+
+let screenX=0;
+
+while(screenX<160){
+
+const worldX=
+(screenX+gbPPU.lineSCX[y])&255;
+
+const tileX=
+worldX>>3;
+
 const mapAddress=
 mapBase+
-tileY*32+
+(tileY<<5)+
 tileX;
 
 const tileIndex=
@@ -4833,16 +4943,17 @@ gbVRAM[
 mapAddress-0x8000
 ];
 
-let tileAddress;
+let tile;
 
-if(gbPPU.lcdc&0x10){
+if(signedMode){
 
-tileAddress=
-0x8000+
-tileIndex*16;
+/*
+   Signed tile addressing:
+   0x8800-0x97FF.
 
-}
-else{
+   Physical cache slot:
+   128 + signed tile index.
+*/
 
 const signedTile=
 tileIndex<128
@@ -4851,42 +4962,48 @@ tileIndex
 :
 tileIndex-256;
 
-tileAddress=
-0x9000+
-signedTile*16;
+tile=
+128+signedTile;
+
+}
+else{
+
+tile=tileIndex;
 
 }
 
+gbDecodeTile(tile);
 
-const row=
-worldY&7;
+const tileCacheBase=
+(tile<<6)+
+(row<<3);
 
-const low=
-gbVRAM[
-tileAddress+
-row*2-
-0x8000
+const pixelInTile=
+worldX&7;
+
+const count=
+Math.min(
+8-pixelInTile,
+160-screenX
+);
+
+const outBase=
+(y*160+screenX)*4;
+
+for(let p=0;p<count;p++){
+
+const color=
+gbTileCache[
+tileCacheBase+
+pixelInTile+
+p
 ];
 
-const high=
-gbVRAM[
-tileAddress+
-row*2+1-
-0x8000
-];
-
-const bit=
-7-(worldX&7);
-
-color=
-((high>>bit)&1)*2+
-((low>>bit)&1);
-
-}
-
+const pos=
+screenX+p;
 
 bgColorIndex[
-y*160+screenX
+y*160+pos
 ]=color;
 
 const shade=
@@ -4898,26 +5015,61 @@ color
 ];
 
 const i=
-(y*160+screenX)*4;
+outBase+
+p*4;
 
-image.data[i]=shade;
-image.data[i+1]=shade;
-image.data[i+2]=shade;
-image.data[i+3]=255;
+data[i]=shade;
+data[i+1]=shade;
+data[i+2]=shade;
+data[i+3]=255;
+
+}
+
+screenX+=count;
+
+}
+
+}
+
+}
+else{
+
+/* LCDC bit 0 disabled: blank background. */
+
+for(let i=0;i<160*144;i++){
+
+const j=i*4;
+
+data[j]=255;
+data[j+1]=255;
+data[j+2]=255;
+data[j+3]=255;
 
 }
 
 }
 
 
-/* WINDOW */
+/* =========================================================
+   WINDOW
+========================================================= */
 
 if(gbPPU.lcdc&0x20){
 
-const wy=gbPPU.wy;
-const wx=gbPPU.wx-7;
+const wy=
+gbPPU.wy;
+
+const wx=
+gbPPU.wx-7;
 
 if(wy<144){
+
+const mapBase=
+(gbPPU.lcdc&0x40)
+?
+0x9C00
+:
+0x9800;
 
 for(let y=Math.max(0,wy);y<144;y++){
 
@@ -4927,46 +5079,38 @@ y-wy;
 const tileY=
 windowY>>3;
 
-for(
-let screenX=Math.max(0,wx);
-screenX<160;
-screenX++
-){
+const row=
+windowY&7;
+
+let screenX=
+Math.max(0,wx);
+
+if(screenX<160){
+
+while(screenX<160){
 
 const windowX=
 screenX-wx;
-
-if(windowX<0)
-continue;
 
 const tileX=
 windowX>>3;
 
 if(tileX>=32)
-continue;
-
-const mapBase=
-(gbPPU.lcdc&0x40)
-?
-0x9C00
-:
-0x9800;
+break;
 
 const tileIndex=
 gbVRAM[
 mapBase+
-tileY*32+
+(tileY<<5)+
 tileX-
 0x8000
 ];
 
-let tileAddress;
+let tile;
 
 if(gbPPU.lcdc&0x10){
 
-tileAddress=
-0x8000+
-tileIndex*16;
+tile=tileIndex;
 
 }
 else{
@@ -4978,38 +5122,43 @@ tileIndex
 :
 tileIndex-256;
 
-tileAddress=
-0x9000+
-signedTile*16;
+tile=
+128+signedTile;
 
 }
 
-const row=
-windowY&7;
+gbDecodeTile(tile);
 
-const low=
-gbVRAM[
-tileAddress+
-row*2-
-0x8000
-];
+const tileCacheBase=
+(tile<<6)+
+(row<<3);
 
-const high=
-gbVRAM[
-tileAddress+
-row*2+1-
-0x8000
-];
+const pixelInTile=
+windowX&7;
 
-const bit=
-7-(windowX&7);
+const count=
+Math.min(
+8-pixelInTile,
+160-screenX
+);
+
+const outBase=
+(y*160+screenX)*4;
+
+for(let p=0;p<count;p++){
 
 const color=
-((high>>bit)&1)*2+
-((low>>bit)&1);
+gbTileCache[
+tileCacheBase+
+pixelInTile+
+p
+];
+
+const pos=
+screenX+p;
 
 bgColorIndex[
-y*160+screenX
+y*160+pos
 ]=color;
 
 const shade=
@@ -5021,12 +5170,17 @@ color
 ];
 
 const i=
-(y*160+screenX)*4;
+outBase+
+p*4;
 
-image.data[i]=shade;
-image.data[i+1]=shade;
-image.data[i+2]=shade;
-image.data[i+3]=255;
+data[i]=shade;
+data[i+1]=shade;
+data[i+2]=shade;
+data[i+3]=255;
+
+}
+
+screenX+=count;
 
 }
 
@@ -5036,8 +5190,12 @@ image.data[i+3]=255;
 
 }
 
+}
 
-/* SPRITES */
+
+/* =========================================================
+   SPRITES
+========================================================= */
 
 if(gbPPU.lcdc&0x02){
 
@@ -5113,15 +5271,16 @@ actualY-=8;
 }
 
 
-const tileOffset=
-tileNumber*16+
-actualY*2;
+/*
+   Sprite tiles always use the normal 0x8000
+   unsigned tile addressing.
+*/
 
-const low=
-gbVRAM[tileOffset];
+gbDecodeTile(tileNumber);
 
-const high=
-gbVRAM[tileOffset+1];
+const tileCacheBase=
+(tileNumber<<6)+
+(actualY<<3);
 
 
 for(let px=0;px<8;px++){
@@ -5134,8 +5293,10 @@ px
 7-px;
 
 const color=
-((high>>actualX)&1)*2+
-((low>>actualX)&1);
+gbTileCache[
+tileCacheBase+
+actualX
+];
 
 if(color===0)
 continue;
@@ -5177,10 +5338,10 @@ color
 const i=
 (screenY*160+screenX)*4;
 
-image.data[i]=shade;
-image.data[i+1]=shade;
-image.data[i+2]=shade;
-image.data[i+3]=255;
+data[i]=shade;
+data[i+1]=shade;
+data[i+2]=shade;
+data[i+3]=255;
 
 }
 
