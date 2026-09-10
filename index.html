@@ -1,181 +1,90 @@
+```html
 <!doctype html>
-
 <html>
 <head>
-
 <meta charset="utf-8">
-
-<meta name="viewport"
-content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Retro Land - PS5 Safari 17</title>
 
 <style>
-
 html,body{
-margin:0;
-width:100%;
-height:100%;
-overflow:hidden;
-background:#111;
-color:#e5efc8;
-font-family:Arial,sans-serif;
+margin:0;width:100%;height:100%;overflow:hidden;
+background:#111;color:#e5efc8;font-family:Arial,sans-serif;
 touch-action:none;
 }
-
 #bar{
-height:50px;
-background:#1c2418;
-display:flex;
-align-items:center;
-justify-content:space-between;
-padding:0 12px;
-box-sizing:border-box;
+height:50px;background:#1c2418;display:flex;align-items:center;
+justify-content:space-between;padding:0 12px;box-sizing:border-box;
 }
-
 button{
-background:#293426;
-color:#e5efc8;
-border:1px solid #607052;
-border-radius:6px;
-padding:7px 11px;
-font-weight:bold;
+background:#293426;color:#e5efc8;border:1px solid #607052;
+border-radius:6px;padding:7px 11px;font-weight:bold;
 }
-
 #stage{
-height:calc(100% - 80px);
-display:flex;
-align-items:center;
+height:calc(100% - 80px);display:flex;align-items:center;
 justify-content:center;
 }
-
 canvas{
-width:min(100%,960px);
-height:auto;
-max-height:100%;
-image-rendering:pixelated;
-image-rendering:crisp-edges;
-background:#cbd99e;
-border:8px solid #20271d;
-box-sizing:border-box;
+width:min(100%,960px);height:auto;max-height:100%;
+image-rendering:pixelated;image-rendering:crisp-edges;
+background:#cbd99e;border:8px solid #20271d;box-sizing:border-box;
 }
-
 #hint{
-text-align:center;
-height:30px;
-font-size:12px;
-opacity:.8;
-padding-top:7px;
-box-sizing:border-box;
+text-align:center;height:30px;font-size:12px;opacity:.8;
+padding-top:7px;box-sizing:border-box;
 }
-
 #gbButtons{
-position:fixed;
-right:28px;
-bottom:35px;
-display:flex;
-align-items:center;
-gap:10px;
-z-index:50;
-touch-action:none;
--webkit-user-select:none;
-user-select:none;
+position:fixed;right:28px;bottom:35px;display:flex;
+align-items:center;gap:10px;z-index:50;touch-action:none;
+-webkit-user-select:none;user-select:none;
 }
-
-#startBtn,
-#selectBtn{
-width:75px;
-height:48px;
-border-radius:25px;
-font-size:12px;
-background:#38482f;
-border:2px solid #91a978;
-color:#eef6d5;
-touch-action:none;
--webkit-user-select:none;
-user-select:none;
+#startBtn,#selectBtn{
+width:75px;height:48px;border-radius:25px;font-size:12px;
+background:#38482f;border:2px solid #91a978;color:#eef6d5;
+touch-action:none;-webkit-user-select:none;user-select:none;
 }
-
 #jumpBtn{
-width:105px;
-height:65px;
-border-radius:50%;
-font-size:17px;
-background:#38482f;
-border:2px solid #91a978;
-color:#eef6d5;
-touch-action:none;
--webkit-user-select:none;
-user-select:none;
+width:105px;height:65px;border-radius:50%;font-size:17px;
+background:#38482f;border:2px solid #91a978;color:#eef6d5;
+touch-action:none;-webkit-user-select:none;user-select:none;
 }
-
-#startBtn:active,
-#selectBtn:active,
-#jumpBtn:active{
+#startBtn:active,#selectBtn:active,#jumpBtn:active{
 transform:scale(.94);
 }
-
-#startBtn:focus,
-#selectBtn:focus,
-#jumpBtn:focus{
-outline:3px solid #dce9b8;
-outline-offset:3px;
+#startBtn:focus,#selectBtn:focus,#jumpBtn:focus{
+outline:3px solid #dce9b8;outline-offset:3px;
 }
-
 </style>
-
 </head>
 
 <body>
 
 <div id="bar">
-
 <b>RETRO LAND — GAME BOY STYLE</b>
-
 <span>
 <button id="pause">PAUSE</button>
 <button id="reset">RESET</button>
 <button id="sound">SOUND</button>
 </span>
-
 </div>
 
 <div id="stage">
-
-<canvas
-id="c"
-width="160"
-height="144"
-tabindex="0"></canvas>
-
+<canvas id="c" width="160" height="144" tabindex="0"></canvas>
 </div>
 
 <div id="hint">
-
 DualSense: D-pad / Left Stick = Move · X = A / Jump · O = B / Dash · OPTIONS = Pause
-
 </div>
 
 <div id="gbButtons">
-
-<button id="startBtn" type="button">
-START
-</button>
-
-<button id="selectBtn" type="button">
-SELECT
-</button>
-
-<button id="jumpBtn" type="button">
-JUMP
-</button>
-
+<button id="startBtn" type="button">START</button>
+<button id="selectBtn" type="button">SELECT</button>
+<button id="jumpBtn" type="button">JUMP</button>
 </div>
 
 <script>
 
 "use strict";
-
 
 /* =========================================================
    GAME
@@ -189,22 +98,18 @@ const H=144;
 
 x.imageSmoothingEnabled=false;
 
-   /* =========================================================
+
+/* =========================================================
    PERFORMANCE BUFFERS
 ========================================================= */
 
 const gbCtx=x;
 
 const gbImage=
-gbCtx.createImageData(
-160,
-144
-);
+gbCtx.createImageData(160,144);
 
 const gbBGColorIndex=
-new Uint8Array(
-160*144
-);
+new Uint8Array(160*144);
 
 
 /* =========================================================
@@ -217,7 +122,8 @@ r:0,
 j:0,
 d:0
 };
-   const keyboardInput={
+
+const keyboardInput={
 left:0,
 right:0,
 up:0,
@@ -270,59 +176,33 @@ function gbJoypadRead(){
 
 let value=0xCF;
 
-
-/*
-   Bit 5 = 0 -> buttons selected
-   Bit 4 = 0 -> D-pad selected
-*/
-
 if(gbJoypad.selectButtons){
-
 value|=0x20;
-
 }
 else{
 
 value&=~0x20;
 
-if(gbJoypad.A)
-value&=~0x01;
-
-if(gbJoypad.B)
-value&=~0x02;
-
-if(gbJoypad.SELECT)
-value&=~0x04;
-
-if(gbJoypad.START)
-value&=~0x08;
+if(gbJoypad.A)value&=~0x01;
+if(gbJoypad.B)value&=~0x02;
+if(gbJoypad.SELECT)value&=~0x04;
+if(gbJoypad.START)value&=~0x08;
 
 }
 
-
 if(gbJoypad.selectDpad){
-
 value|=0x10;
-
 }
 else{
 
 value&=~0x10;
 
-if(gbJoypad.RIGHT)
-value&=~0x01;
-
-if(gbJoypad.LEFT)
-value&=~0x02;
-
-if(gbJoypad.UP)
-value&=~0x04;
-
-if(gbJoypad.DOWN)
-value&=~0x08;
+if(gbJoypad.RIGHT)value&=~0x01;
+if(gbJoypad.LEFT)value&=~0x02;
+if(gbJoypad.UP)value&=~0x04;
+if(gbJoypad.DOWN)value&=~0x08;
 
 }
-
 
 return value&0xFF;
 
@@ -433,7 +313,6 @@ w:18,
 h:30
 };
 
-
 let msg="";
 
 
@@ -527,7 +406,6 @@ function update(dt){
 if(pause||win)return;
 
 p.vy+=.30*dt;
-
 
 if(k.l){
 
@@ -642,7 +520,6 @@ p.vy=0;
 p.g=1;
 
 }
-
 else if(
 p.vy<0 &&
 p.y>=q[1]+q[3]-4
@@ -671,7 +548,6 @@ msg="GAME OVER - RESET";
 pause=1;
 
 }
-
 else{
 
 p.x=Math.max(
@@ -742,7 +618,6 @@ p.vy=-3.8;
 beep(120,.08);
 
 }
-
 else{
 
 p.lives--;
@@ -1398,7 +1273,6 @@ beep(700,.05);
 
 function gp(){
 
-
 let pads=
 navigator.getGamepads
 ?
@@ -1420,9 +1294,7 @@ break;
 }
 
 
-/* =========================================================
-   RESET GAMEPAD STATE
-========================================================= */
+/* RESET GAMEPAD STATE */
 
 gamepadInput.left=0;
 gamepadInput.right=0;
@@ -1437,9 +1309,7 @@ if(g){
 let ax=g.axes||[];
 
 
-/* =========================================================
-   D-PAD
-========================================================= */
+/* D-PAD */
 
 let left=false;
 let right=false;
@@ -1539,7 +1409,7 @@ left=true;
 up=true;
 }
 
-} 
+}
 
 
 /* SAVE GAMEPAD D-PAD */
@@ -1626,7 +1496,6 @@ opt=0;
    COMBINE KEYBOARD + GAMEPAD + VIRTUAL
 ========================================================= */
 
-
 /* FAKE GAME */
 
 k.l=
@@ -1673,9 +1542,7 @@ gamepadInput.b
 0;
 
 
-/* =========================================================
-   GAME BOY D-PAD
-========================================================= */
+/* GAME BOY D-PAD */
 
 gbJoypad.LEFT=
 (
@@ -1718,9 +1585,7 @@ gamepadInput.down
 0;
 
 
-/* =========================================================
-   GAME BOY A / B
-========================================================= */
+/* GAME BOY A / B */
 
 gbJoypad.A=
 (
@@ -1747,6 +1612,8 @@ gamepadInput.b
 requestAnimationFrame(gp);
 
 }
+
+
 /* =========================================================
    GAME BOY MEMORY
 ========================================================= */
@@ -1768,19 +1635,12 @@ new Uint8Array(0xA0);
 const gbCartridge={
 
 rom:null,
-
 romSize:0,
-
 ram:new Uint8Array(0x8000),
-
 romBank:1,
-
 ramBank:0,
-
 mbcType:0,
-
 ramEnabled:false,
-
 bankingMode:0
 
 };
@@ -1808,7 +1668,6 @@ mode:2,
 
 statIRQLine:false,
 
-/* Scroll values captured for each scanline */
 lineSCX:new Uint8Array(144),
 lineSCY:new Uint8Array(144)
 
@@ -2541,11 +2400,12 @@ gbPPU.cycles=0;
 gbPPU.mode=2;
 gbPPU.statIRQLine=false;
 
-   gbPPU.lineSCX.fill(0);
+gbPPU.lineSCX.fill(0);
 gbPPU.lineSCY.fill(0);
 
 gbPPU.lineSCX[0]=gbPPU.scx;
 gbPPU.lineSCY[0]=gbPPU.scy;
+
 
 /* JOYPAD RESET */
 
@@ -2608,13 +2468,16 @@ this.imeDelay=0;
 }
 
 
+/* =========================================================
+   CPU REGISTERS
+========================================================= */
+
 get af(){
 return(
 (this.a<<8)|
 (this.f&0xF0)
 );
 }
-
 
 set af(v){
 
@@ -2634,7 +2497,6 @@ this.c
 );
 }
 
-
 set bc(v){
 
 this.b=
@@ -2652,7 +2514,6 @@ return(
 this.e
 );
 }
-
 
 set de(v){
 
@@ -2672,7 +2533,6 @@ this.l
 );
 }
 
-
 set hl(v){
 
 this.h=
@@ -2683,6 +2543,10 @@ v&0xFF;
 
 }
 
+
+/* =========================================================
+   FLAGS
+========================================================= */
 
 get Z(){
 return !!(this.f&0x80);
@@ -2740,6 +2604,10 @@ this.f&=~0x10;
 }
 
 
+/* =========================================================
+   MEMORY
+========================================================= */
+
 read(addr){
 
 return gbRead(addr);
@@ -2753,6 +2621,10 @@ gbWrite(addr,value);
 
 }
 
+
+/* =========================================================
+   FETCH
+========================================================= */
 
 fetch8(){
 
@@ -2776,6 +2648,10 @@ return lo|(hi<<8);
 
 }
 
+
+/* =========================================================
+   STACK
+========================================================= */
 
 push16(v){
 
@@ -2817,6 +2693,10 @@ return lo|(hi<<8);
 }
 
 
+/* =========================================================
+   RESET
+========================================================= */
+
 reset(){
 
 this.a=0x01;
@@ -2842,6 +2722,10 @@ this.imeDelay=0;
 
 }
 
+
+/* =========================================================
+   INTERRUPTS
+========================================================= */
 
 serviceInterrupts(){
 
@@ -2926,6 +2810,208 @@ return 20;
 }
 
 
+/* =========================================================
+   OPTIMIZED CPU HELPERS
+========================================================= */
+
+getR(n){
+
+switch(n){
+
+case 0:return this.b;
+case 1:return this.c;
+case 2:return this.d;
+case 3:return this.e;
+case 4:return this.h;
+case 5:return this.l;
+case 6:return this.read(this.hl);
+case 7:return this.a;
+
+}
+
+return 0;
+
+}
+
+
+setR(n,v){
+
+v&=0xFF;
+
+switch(n){
+
+case 0:this.b=v;break;
+case 1:this.c=v;break;
+case 2:this.d=v;break;
+case 3:this.e=v;break;
+case 4:this.h=v;break;
+case 5:this.l=v;break;
+case 6:this.write(this.hl,v);break;
+case 7:this.a=v;break;
+
+}
+
+}
+
+
+inc8(v){
+
+const old=v&0xFF;
+
+v=(v+1)&0xFF;
+
+this.Z=v===0;
+this.N=0;
+this.H=((old&0x0F)+1)>0x0F;
+
+return v;
+
+}
+
+
+dec8(v){
+
+const old=v&0xFF;
+
+v=(v-1)&0xFF;
+
+this.Z=v===0;
+this.N=1;
+this.H=(old&0x0F)===0;
+
+return v;
+
+}
+
+
+addA(v){
+
+v&=0xFF;
+
+const a=this.a;
+const result=a+v;
+
+this.a=result&0xFF;
+
+this.Z=this.a===0;
+this.N=0;
+this.H=((a&15)+(v&15))>15;
+this.CARRY=result>255;
+
+}
+
+
+adcA(v){
+
+v&=0xFF;
+
+const carry=this.CARRY?1:0;
+const a=this.a;
+const result=a+v+carry;
+
+this.a=result&0xFF;
+
+this.Z=this.a===0;
+this.N=0;
+this.H=((a&15)+(v&15)+carry)>15;
+this.CARRY=result>255;
+
+}
+
+
+subA(v){
+
+v&=0xFF;
+
+const a=this.a;
+const result=a-v;
+
+this.a=result&0xFF;
+
+this.Z=this.a===0;
+this.N=1;
+this.H=(a&15)<(v&15);
+this.CARRY=a<v;
+
+}
+
+
+sbcA(v){
+
+v&=0xFF;
+
+const carry=this.CARRY?1:0;
+const a=this.a;
+const result=a-v-carry;
+
+this.a=result&0xFF;
+
+this.Z=this.a===0;
+this.N=1;
+this.H=((a&15)-(v&15)-carry)<0;
+this.CARRY=result<0;
+
+}
+
+
+cpA(v){
+
+v&=0xFF;
+
+const a=this.a;
+const result=a-v;
+
+this.Z=(result&0xFF)===0;
+this.N=1;
+this.H=(a&15)<(v&15);
+this.CARRY=a<v;
+
+}
+
+
+xorA(v){
+
+this.a=
+(this.a^(v&0xFF))&0xFF;
+
+this.Z=this.a===0;
+this.N=0;
+this.H=0;
+this.CARRY=0;
+
+}
+
+
+orA(v){
+
+this.a=
+(this.a|(v&0xFF))&0xFF;
+
+this.Z=this.a===0;
+this.N=0;
+this.H=0;
+this.CARRY=0;
+
+}
+
+
+andA(v){
+
+this.a=
+(this.a&(v&0xFF))&0xFF;
+
+this.Z=this.a===0;
+this.N=0;
+this.H=1;
+this.CARRY=0;
+
+}
+
+
+/* =========================================================
+   CPU STEP
+========================================================= */
+
 step(){
 
 const interruptCycles=
@@ -2948,200 +3034,6 @@ try{
 const op=this.fetch8();
 
 
-const getR=(n)=>{
-
-switch(n){
-
-case 0:return this.b;
-case 1:return this.c;
-case 2:return this.d;
-case 3:return this.e;
-case 4:return this.h;
-case 5:return this.l;
-case 6:return this.read(this.hl);
-case 7:return this.a;
-
-}
-
-return 0;
-
-};
-
-
-const setR=(n,v)=>{
-
-v&=0xFF;
-
-switch(n){
-
-case 0:this.b=v;break;
-case 1:this.c=v;break;
-case 2:this.d=v;break;
-case 3:this.e=v;break;
-case 4:this.h=v;break;
-case 5:this.l=v;break;
-case 6:this.write(this.hl,v);break;
-case 7:this.a=v;break;
-
-}
-
-};
-
-
-const inc8=(v)=>{
-
-const old=v&0xFF;
-
-v=(v+1)&0xFF;
-
-this.Z=v===0;
-this.N=0;
-this.H=((old&0x0F)+1)>0x0F;
-
-return v;
-
-};
-
-
-const dec8=(v)=>{
-
-const old=v&0xFF;
-
-v=(v-1)&0xFF;
-
-this.Z=v===0;
-this.N=1;
-this.H=(old&0x0F)===0;
-
-return v;
-
-};
-
-
-const addA=(v)=>{
-
-v&=0xFF;
-
-const a=this.a;
-const result=a+v;
-
-this.a=result&0xFF;
-
-this.Z=this.a===0;
-this.N=0;
-this.H=((a&15)+(v&15))>15;
-this.CARRY=result>255;
-
-};
-
-
-const adcA=(v)=>{
-
-v&=0xFF;
-
-const carry=this.CARRY?1:0;
-const a=this.a;
-const result=a+v+carry;
-
-this.a=result&0xFF;
-
-this.Z=this.a===0;
-this.N=0;
-this.H=((a&15)+(v&15)+carry)>15;
-this.CARRY=result>255;
-
-};
-
-
-const subA=(v)=>{
-
-v&=0xFF;
-
-const a=this.a;
-const result=a-v;
-
-this.a=result&0xFF;
-
-this.Z=this.a===0;
-this.N=1;
-this.H=(a&15)<(v&15);
-this.CARRY=a<v;
-
-};
-
-
-const sbcA=(v)=>{
-
-v&=0xFF;
-
-const carry=this.CARRY?1:0;
-const a=this.a;
-const result=a-v-carry;
-
-this.a=result&0xFF;
-
-this.Z=this.a===0;
-this.N=1;
-this.H=((a&15)-(v&15)-carry)<0;
-this.CARRY=result<0;
-
-};
-
-
-const cpA=(v)=>{
-
-v&=0xFF;
-
-const a=this.a;
-const result=a-v;
-
-this.Z=(result&0xFF)===0;
-this.N=1;
-this.H=(a&15)<(v&15);
-this.CARRY=a<v;
-
-};
-
-
-const xorA=(v)=>{
-
-this.a=
-(this.a^(v&0xFF))&0xFF;
-
-this.Z=this.a===0;
-this.N=0;
-this.H=0;
-this.CARRY=0;
-
-};
-
-
-const orA=(v)=>{
-
-this.a=
-(this.a|(v&0xFF))&0xFF;
-
-this.Z=this.a===0;
-this.N=0;
-this.H=0;
-this.CARRY=0;
-
-};
-
-
-const andA=(v)=>{
-
-this.a=
-(this.a&(v&0xFF))&0xFF;
-
-this.Z=this.a===0;
-this.N=0;
-this.H=1;
-this.CARRY=0;
-
-};
-
-
 /* =========================================================
    LD r,r
 ========================================================= */
@@ -3162,9 +3054,9 @@ return 4;
 const dst=(op>>3)&7;
 const src=op&7;
 
-setR(
+this.setR(
 dst,
-getR(src)
+this.getR(src)
 );
 
 return(
@@ -3189,46 +3081,46 @@ op<=0xBF
 ){
 
 const r=op&7;
-const v=getR(r);
+const v=this.getR(r);
 
 if(op<0x88){
 
-addA(v);
+this.addA(v);
 
 }
 else if(op<0x90){
 
-adcA(v);
+this.adcA(v);
 
 }
 else if(op<0x98){
 
-subA(v);
+this.subA(v);
 
 }
 else if(op<0xA0){
 
-sbcA(v);
+this.sbcA(v);
 
 }
 else if(op<0xA8){
 
-andA(v);
+this.andA(v);
 
 }
 else if(op<0xB0){
 
-xorA(v);
+this.xorA(v);
 
 }
 else if(op<0xB8){
 
-orA(v);
+this.orA(v);
 
 }
 else{
 
-cpA(v);
+this.cpA(v);
 
 }
 
@@ -3247,9 +3139,9 @@ if(
 
 const r=(op>>3)&7;
 
-setR(
+this.setR(
 r,
-inc8(getR(r))
+this.inc8(this.getR(r))
 );
 
 return r===6 ? 12 : 4;
@@ -3263,9 +3155,9 @@ if(
 
 const r=(op>>3)&7;
 
-setR(
+this.setR(
 r,
-dec8(getR(r))
+this.dec8(this.getR(r))
 );
 
 return r===6 ? 12 : 4;
@@ -3476,8 +3368,10 @@ const v=this.bc;
 const result=old+v;
 
 this.N=0;
+
 this.H=
 ((old&0xFFF)+(v&0xFFF))>0xFFF;
+
 this.CARRY=result>0xFFFF;
 
 this.hl=result&0xFFFF;
@@ -3485,6 +3379,7 @@ this.hl=result&0xFFFF;
 return 8;
 
 }
+
 
 case 0x19:{
 
@@ -3493,8 +3388,10 @@ const v=this.de;
 const result=old+v;
 
 this.N=0;
+
 this.H=
 ((old&0xFFF)+(v&0xFFF))>0xFFF;
+
 this.CARRY=result>0xFFFF;
 
 this.hl=result&0xFFFF;
@@ -3502,6 +3399,7 @@ this.hl=result&0xFFFF;
 return 8;
 
 }
+
 
 case 0x29:{
 
@@ -3510,8 +3408,10 @@ const v=this.hl;
 const result=old+v;
 
 this.N=0;
+
 this.H=
 ((old&0xFFF)+(v&0xFFF))>0xFFF;
+
 this.CARRY=result>0xFFFF;
 
 this.hl=result&0xFFFF;
@@ -3520,6 +3420,7 @@ return 8;
 
 }
 
+
 case 0x39:{
 
 const old=this.hl;
@@ -3527,8 +3428,10 @@ const v=this.sp;
 const result=old+v;
 
 this.N=0;
+
 this.H=
 ((old&0xFFF)+(v&0xFFF))>0xFFF;
+
 this.CARRY=result>0xFFFF;
 
 this.hl=result&0xFFFF;
@@ -3699,35 +3602,35 @@ return 4;
 /* ALU immediate */
 
 case 0xC6:
-addA(this.fetch8());
+this.addA(this.fetch8());
 return 8;
 
 case 0xCE:
-adcA(this.fetch8());
+this.adcA(this.fetch8());
 return 8;
 
 case 0xD6:
-subA(this.fetch8());
+this.subA(this.fetch8());
 return 8;
 
 case 0xDE:
-sbcA(this.fetch8());
+this.sbcA(this.fetch8());
 return 8;
 
 case 0xE6:
-andA(this.fetch8());
+this.andA(this.fetch8());
 return 8;
 
 case 0xEE:
-xorA(this.fetch8());
+this.xorA(this.fetch8());
 return 8;
 
 case 0xF6:
-orA(this.fetch8());
+this.orA(this.fetch8());
 return 8;
 
 case 0xFE:
-cpA(this.fetch8());
+this.cpA(this.fetch8());
 return 8;
 
 
@@ -4408,7 +4311,7 @@ const group=cb>>6;
 const bit=(cb>>3)&7;
 
 let value=
-getR(r);
+this.getR(r);
 
 
 /* ROTATE / SHIFT */
@@ -4529,7 +4432,7 @@ break;
 }
 
 
-setR(r,result);
+this.setR(r,result);
 
 this.Z=result===0;
 this.N=0;
@@ -4563,7 +4466,7 @@ if(group===2){
 value&=
 ~(1<<bit);
 
-setR(r,value);
+this.setR(r,value);
 
 return r===6 ? 16 : 8;
 
@@ -4577,7 +4480,7 @@ if(group===3){
 value|=
 (1<<bit);
 
-setR(r,value);
+this.setR(r,value);
 
 return r===6 ? 16 : 8;
 
@@ -4751,8 +4654,6 @@ gbPPU.mode=0;
 }
 
 
-/* STAT register */
-
 let stat=
 gbPPU.stat&0x78;
 
@@ -4769,15 +4670,6 @@ stat|=0x04;
 }
 
 
-/*
-   LCD STAT interrupt sources.
-
-   Bit 6 = LY=LYC
-   Bit 5 = Mode 2
-   Bit 4 = Mode 1
-   Bit 3 = Mode 0
-*/
-
 let statIRQ=false;
 
 if(
@@ -4792,11 +4684,6 @@ statIRQ=true;
 }
 
 
-/*
-   STAT interrupts trigger on a rising edge
-   of the selected interrupt condition.
-*/
-
 if(statIRQ && !gbPPU.statIRQLine){
 
 gbMemory[0xFF0F]|=0x02;
@@ -4809,6 +4696,7 @@ gbPPU.stat=
 stat|0x80;
 
 }
+
 
 /* =========================================================
    PPU STEP
@@ -4831,6 +4719,7 @@ gbPPU.ly++;
 
 
 /* Start of VBlank */
+
 if(gbPPU.ly===144){
 
 gbMemory[0xFF0F]|=0x01;
@@ -4838,14 +4727,7 @@ gbMemory[0xFF0F]|=0x01;
 }
 
 
-/*
-   Capture scrolling for the new scanline.
-
-   The renderer will later use the SCX/SCY
-   that belongs to each individual line
-   instead of using the final values for
-   the entire frame.
-*/
+/* Capture scrolling */
 
 if(gbPPU.ly<144){
 
@@ -4856,6 +4738,7 @@ gbPPU.lineSCY[gbPPU.ly]=gbPPU.scy;
 
 
 /* New frame */
+
 if(gbPPU.ly>=154){
 
 gbPPU.ly=0;
@@ -4871,6 +4754,7 @@ gbPPU.lineSCY[0]=gbPPU.scy;
 gbUpdateSTAT();
 
 }
+
 
 /* =========================================================
    PPU PALETTE
@@ -4905,6 +4789,7 @@ const palette=[
 
 const bgColorIndex=
 gbBGColorIndex;
+
 bgColorIndex.fill(0);
 
 
@@ -4944,7 +4829,9 @@ tileY*32+
 tileX;
 
 const tileIndex=
-gbVRAM[mapAddress-0x8000];
+gbVRAM[
+mapAddress-0x8000
+];
 
 let tileAddress;
 
@@ -5345,14 +5232,14 @@ cycles+=actual;
 
 }
 
-/*
-   Render the frame using the scroll state
-   captured for each scanline.
-*/
+
+/* Render the frame */
+
 gbPPUDrawBackground();
 
 }
-   
+
+
 /* =========================================================
    TIMER
 ========================================================= */
@@ -5376,6 +5263,7 @@ const frequencies=[
 64,
 256
 ];
+
 
 const threshold=
 frequencies[
@@ -5657,3 +5545,4 @@ loadGBROM();
 
 </body>
 </html>
+```
