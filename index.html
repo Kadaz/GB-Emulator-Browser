@@ -1,90 +1,181 @@
-```html
 <!doctype html>
+
 <html>
 <head>
+
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+
+<meta name="viewport"
+content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+
 <title>Retro Land - PS5 Safari 17</title>
 
 <style>
+
 html,body{
-margin:0;width:100%;height:100%;overflow:hidden;
-background:#111;color:#e5efc8;font-family:Arial,sans-serif;
+margin:0;
+width:100%;
+height:100%;
+overflow:hidden;
+background:#111;
+color:#e5efc8;
+font-family:Arial,sans-serif;
 touch-action:none;
 }
+
 #bar{
-height:50px;background:#1c2418;display:flex;align-items:center;
-justify-content:space-between;padding:0 12px;box-sizing:border-box;
+height:50px;
+background:#1c2418;
+display:flex;
+align-items:center;
+justify-content:space-between;
+padding:0 12px;
+box-sizing:border-box;
 }
+
 button{
-background:#293426;color:#e5efc8;border:1px solid #607052;
-border-radius:6px;padding:7px 11px;font-weight:bold;
+background:#293426;
+color:#e5efc8;
+border:1px solid #607052;
+border-radius:6px;
+padding:7px 11px;
+font-weight:bold;
 }
+
 #stage{
-height:calc(100% - 80px);display:flex;align-items:center;
+height:calc(100% - 80px);
+display:flex;
+align-items:center;
 justify-content:center;
 }
+
 canvas{
-width:min(100%,960px);height:auto;max-height:100%;
-image-rendering:pixelated;image-rendering:crisp-edges;
-background:#cbd99e;border:8px solid #20271d;box-sizing:border-box;
+width:min(100%,960px);
+height:auto;
+max-height:100%;
+image-rendering:pixelated;
+image-rendering:crisp-edges;
+background:#cbd99e;
+border:8px solid #20271d;
+box-sizing:border-box;
 }
+
 #hint{
-text-align:center;height:30px;font-size:12px;opacity:.8;
-padding-top:7px;box-sizing:border-box;
+text-align:center;
+height:30px;
+font-size:12px;
+opacity:.8;
+padding-top:7px;
+box-sizing:border-box;
 }
+
 #gbButtons{
-position:fixed;right:28px;bottom:35px;display:flex;
-align-items:center;gap:10px;z-index:50;touch-action:none;
--webkit-user-select:none;user-select:none;
+position:fixed;
+right:28px;
+bottom:35px;
+display:flex;
+align-items:center;
+gap:10px;
+z-index:50;
+touch-action:none;
+-webkit-user-select:none;
+user-select:none;
 }
-#startBtn,#selectBtn{
-width:75px;height:48px;border-radius:25px;font-size:12px;
-background:#38482f;border:2px solid #91a978;color:#eef6d5;
-touch-action:none;-webkit-user-select:none;user-select:none;
+
+#startBtn,
+#selectBtn{
+width:75px;
+height:48px;
+border-radius:25px;
+font-size:12px;
+background:#38482f;
+border:2px solid #91a978;
+color:#eef6d5;
+touch-action:none;
+-webkit-user-select:none;
+user-select:none;
 }
+
 #jumpBtn{
-width:105px;height:65px;border-radius:50%;font-size:17px;
-background:#38482f;border:2px solid #91a978;color:#eef6d5;
-touch-action:none;-webkit-user-select:none;user-select:none;
+width:105px;
+height:65px;
+border-radius:50%;
+font-size:17px;
+background:#38482f;
+border:2px solid #91a978;
+color:#eef6d5;
+touch-action:none;
+-webkit-user-select:none;
+user-select:none;
 }
-#startBtn:active,#selectBtn:active,#jumpBtn:active{
+
+#startBtn:active,
+#selectBtn:active,
+#jumpBtn:active{
 transform:scale(.94);
 }
-#startBtn:focus,#selectBtn:focus,#jumpBtn:focus{
-outline:3px solid #dce9b8;outline-offset:3px;
+
+#startBtn:focus,
+#selectBtn:focus,
+#jumpBtn:focus{
+outline:3px solid #dce9b8;
+outline-offset:3px;
 }
+
 </style>
+
 </head>
 
 <body>
 
 <div id="bar">
+
 <b>RETRO LAND — GAME BOY STYLE</b>
+
 <span>
 <button id="pause">PAUSE</button>
 <button id="reset">RESET</button>
 <button id="sound">SOUND</button>
 </span>
+
 </div>
 
 <div id="stage">
-<canvas id="c" width="160" height="144" tabindex="0"></canvas>
+
+<canvas
+id="c"
+width="160"
+height="144"
+tabindex="0"></canvas>
+
 </div>
 
 <div id="hint">
-DualSense: D-pad / Left Stick = Move · X = A / Jump · O = B / OPTIONS = Pause
+
+DualSense: D-pad / Left Stick = Move · X = A / Jump · O = B / Dash · OPTIONS = Pause
+
 </div>
 
 <div id="gbButtons">
-<button id="startBtn" type="button">START</button>
-<button id="selectBtn" type="button">SELECT</button>
-<button id="jumpBtn" type="button">JUMP</button>
+
+<button id="startBtn" type="button">
+START
+</button>
+
+<button id="selectBtn" type="button">
+SELECT
+</button>
+
+<button id="jumpBtn" type="button">
+JUMP
+</button>
+
 </div>
 
 <script>
 
 "use strict";
+
 
 /* =========================================================
    GAME
@@ -98,18 +189,22 @@ const H=144;
 
 x.imageSmoothingEnabled=false;
 
-
-/* =========================================================
+   /* =========================================================
    PERFORMANCE BUFFERS
 ========================================================= */
 
 const gbCtx=x;
 
 const gbImage=
-gbCtx.createImageData(160,144);
+gbCtx.createImageData(
+160,
+144
+);
 
 const gbBGColorIndex=
-new Uint8Array(160*144);
+new Uint8Array(
+160*144
+);
 
 
 /* =========================================================
@@ -122,8 +217,7 @@ r:0,
 j:0,
 d:0
 };
-
-const keyboardInput={
+   const keyboardInput={
 left:0,
 right:0,
 up:0,
@@ -176,33 +270,59 @@ function gbJoypadRead(){
 
 let value=0xCF;
 
+
+/*
+   Bit 5 = 0 -> buttons selected
+   Bit 4 = 0 -> D-pad selected
+*/
+
 if(gbJoypad.selectButtons){
+
 value|=0x20;
+
 }
 else{
 
 value&=~0x20;
 
-if(gbJoypad.A)value&=~0x01;
-if(gbJoypad.B)value&=~0x02;
-if(gbJoypad.SELECT)value&=~0x04;
-if(gbJoypad.START)value&=~0x08;
+if(gbJoypad.A)
+value&=~0x01;
+
+if(gbJoypad.B)
+value&=~0x02;
+
+if(gbJoypad.SELECT)
+value&=~0x04;
+
+if(gbJoypad.START)
+value&=~0x08;
 
 }
 
+
 if(gbJoypad.selectDpad){
+
 value|=0x10;
+
 }
 else{
 
 value&=~0x10;
 
-if(gbJoypad.RIGHT)value&=~0x01;
-if(gbJoypad.LEFT)value&=~0x02;
-if(gbJoypad.UP)value&=~0x04;
-if(gbJoypad.DOWN)value&=~0x08;
+if(gbJoypad.RIGHT)
+value&=~0x01;
+
+if(gbJoypad.LEFT)
+value&=~0x02;
+
+if(gbJoypad.UP)
+value&=~0x04;
+
+if(gbJoypad.DOWN)
+value&=~0x08;
 
 }
+
 
 return value&0xFF;
 
@@ -313,6 +433,7 @@ w:18,
 h:30
 };
 
+
 let msg="";
 
 
@@ -406,6 +527,7 @@ function update(dt){
 if(pause||win)return;
 
 p.vy+=.30*dt;
+
 
 if(k.l){
 
@@ -520,6 +642,7 @@ p.vy=0;
 p.g=1;
 
 }
+
 else if(
 p.vy<0 &&
 p.y>=q[1]+q[3]-4
@@ -548,6 +671,7 @@ msg="GAME OVER - RESET";
 pause=1;
 
 }
+
 else{
 
 p.x=Math.max(
@@ -618,6 +742,7 @@ p.vy=-3.8;
 beep(120,.08);
 
 }
+
 else{
 
 p.lives--;
@@ -1273,6 +1398,7 @@ beep(700,.05);
 
 function gp(){
 
+
 let pads=
 navigator.getGamepads
 ?
@@ -1294,7 +1420,9 @@ break;
 }
 
 
-/* RESET GAMEPAD STATE */
+/* =========================================================
+   RESET GAMEPAD STATE
+========================================================= */
 
 gamepadInput.left=0;
 gamepadInput.right=0;
@@ -1309,7 +1437,9 @@ if(g){
 let ax=g.axes||[];
 
 
-/* D-PAD */
+/* =========================================================
+   D-PAD
+========================================================= */
 
 let left=false;
 let right=false;
@@ -1409,7 +1539,7 @@ left=true;
 up=true;
 }
 
-}
+} 
 
 
 /* SAVE GAMEPAD D-PAD */
@@ -1496,6 +1626,7 @@ opt=0;
    COMBINE KEYBOARD + GAMEPAD + VIRTUAL
 ========================================================= */
 
+
 /* FAKE GAME */
 
 k.l=
@@ -1542,7 +1673,9 @@ gamepadInput.b
 0;
 
 
-/* GAME BOY D-PAD */
+/* =========================================================
+   GAME BOY D-PAD
+========================================================= */
 
 gbJoypad.LEFT=
 (
@@ -1585,7 +1718,9 @@ gamepadInput.down
 0;
 
 
-/* GAME BOY A / B */
+/* =========================================================
+   GAME BOY A / B
+========================================================= */
 
 gbJoypad.A=
 (
@@ -1612,8 +1747,6 @@ gamepadInput.b
 requestAnimationFrame(gp);
 
 }
-
-
 /* =========================================================
    GAME BOY MEMORY
 ========================================================= */
@@ -1629,115 +1762,25 @@ new Uint8Array(0xA0);
 
 
 /* =========================================================
-   PPU TILE CACHE
-========================================================= */
-
-/*
-   384 physical Game Boy tile slots.
-
-   0-255  = 0x8000-0x8FF0
-   256-383 = 0x9000-0x97F0
-
-   The second area is needed because the signed tile mode
-   uses the 0x8800-0x97FF tile region.
-*/
-
-const gbTileCache=
-new Uint8Array(384*64);
-
-const gbTileValid=
-new Uint8Array(384);
-
-
-function gbInvalidateTile(vramOffset){
-
-const tile=
-vramOffset>>4;
-
-if(tile<384){
-
-gbTileValid[tile]=0;
-
-}
-
-}
-
-
-function gbDecodeTile(tile){
-
-if(gbTileValid[tile])
-return;
-
-
-const vramBase=
-tile<<4;
-
-const cacheBase=
-tile<<6;
-
-for(let row=0;row<8;row++){
-
-const low=
-gbVRAM[vramBase+(row<<1)];
-
-const high=
-gbVRAM[vramBase+(row<<1)+1];
-
-const out=
-cacheBase+(row<<3);
-
-gbTileCache[out]=
-((high>>7)&1)*2+
-((low>>7)&1);
-
-gbTileCache[out+1]=
-((high>>6)&1)*2+
-((low>>6)&1);
-
-gbTileCache[out+2]=
-((high>>5)&1)*2+
-((low>>5)&1);
-
-gbTileCache[out+3]=
-((high>>4)&1)*2+
-((low>>4)&1);
-
-gbTileCache[out+4]=
-((high>>3)&1)*2+
-((low>>3)&1);
-
-gbTileCache[out+5]=
-((high>>2)&1)*2+
-((low>>2)&1);
-
-gbTileCache[out+6]=
-((high>>1)&1)*2+
-((low>>1)&1);
-
-gbTileCache[out+7]=
-(high&1)*2+
-(low&1);
-
-}
-
-gbTileValid[tile]=1;
-
-}
-
-
-/* =========================================================
    GAME BOY CARTRIDGE
 ========================================================= */
 
 const gbCartridge={
 
 rom:null,
+
 romSize:0,
+
 ram:new Uint8Array(0x8000),
+
 romBank:1,
+
 ramBank:0,
+
 mbcType:0,
+
 ramEnabled:false,
+
 bankingMode:0
 
 };
@@ -1765,6 +1808,7 @@ mode:2,
 
 statIRQLine:false,
 
+/* Scroll values captured for each scanline */
 lineSCX:new Uint8Array(144),
 lineSCY:new Uint8Array(144)
 
@@ -2185,13 +2229,9 @@ addr>=0x8000 &&
 addr<=0x9FFF
 ){
 
-const offset=
-addr-0x8000;
-
-gbVRAM[offset]=value;
-
-/* Mark the physical tile as dirty. */
-gbInvalidateTile(offset);
+gbVRAM[
+addr-0x8000
+]=value;
 
 return;
 
@@ -2480,8 +2520,6 @@ gbOAM.fill(0);
 
 gbCartridge.ram.fill(0);
 
-gbTileValid.fill(0);
-
 gbTimer.div=0;
 gbTimer.tima=0;
 gbTimer.tma=0;
@@ -2503,12 +2541,11 @@ gbPPU.cycles=0;
 gbPPU.mode=2;
 gbPPU.statIRQLine=false;
 
-gbPPU.lineSCX.fill(0);
+   gbPPU.lineSCX.fill(0);
 gbPPU.lineSCY.fill(0);
 
 gbPPU.lineSCX[0]=gbPPU.scx;
 gbPPU.lineSCY[0]=gbPPU.scy;
-
 
 /* JOYPAD RESET */
 
@@ -2571,16 +2608,13 @@ this.imeDelay=0;
 }
 
 
-/* =========================================================
-   CPU REGISTERS
-========================================================= */
-
 get af(){
 return(
 (this.a<<8)|
 (this.f&0xF0)
 );
 }
+
 
 set af(v){
 
@@ -2600,6 +2634,7 @@ this.c
 );
 }
 
+
 set bc(v){
 
 this.b=
@@ -2617,6 +2652,7 @@ return(
 this.e
 );
 }
+
 
 set de(v){
 
@@ -2636,6 +2672,7 @@ this.l
 );
 }
 
+
 set hl(v){
 
 this.h=
@@ -2647,11 +2684,7 @@ v&0xFF;
 }
 
 
-/* =========================================================
-   FLAGS
-========================================================= */
-
-get Z{
+get Z(){
 return !!(this.f&0x80);
 }
 
@@ -2707,10 +2740,6 @@ this.f&=~0x10;
 }
 
 
-/* =========================================================
-   MEMORY
-========================================================= */
-
 read(addr){
 
 return gbRead(addr);
@@ -2724,10 +2753,6 @@ gbWrite(addr,value);
 
 }
 
-
-/* =========================================================
-   FETCH
-========================================================= */
 
 fetch8(){
 
@@ -2751,10 +2776,6 @@ return lo|(hi<<8);
 
 }
 
-
-/* =========================================================
-   STACK
-========================================================= */
 
 push16(v){
 
@@ -2796,10 +2817,6 @@ return lo|(hi<<8);
 }
 
 
-/* =========================================================
-   RESET
-========================================================= */
-
 reset(){
 
 this.a=0x01;
@@ -2825,10 +2842,6 @@ this.imeDelay=0;
 
 }
 
-
-/* =========================================================
-   INTERRUPTS
-========================================================= */
 
 serviceInterrupts(){
 
@@ -2913,208 +2926,6 @@ return 20;
 }
 
 
-/* =========================================================
-   OPTIMIZED CPU HELPERS
-========================================================= */
-
-getR(n){
-
-switch(n){
-
-case 0:return this.b;
-case 1:return this.c;
-case 2:return this.d;
-case 3:return this.e;
-case 4:return this.h;
-case 5:return this.l;
-case 6:return this.read(this.hl);
-case 7:return this.a;
-
-}
-
-return 0;
-
-}
-
-
-setR(n,v){
-
-v&=0xFF;
-
-switch(n){
-
-case 0:this.b=v;break;
-case 1:this.c=v;break;
-case 2:this.d=v;break;
-case 3:this.e=v;break;
-case 4:this.h=v;break;
-case 5:this.l=v;break;
-case 6:this.write(this.hl,v);break;
-case 7:this.a=v;break;
-
-}
-
-}
-
-
-inc8(v){
-
-const old=v&0xFF;
-
-v=(v+1)&0xFF;
-
-this.Z=v===0;
-this.N=0;
-this.H=((old&0x0F)+1)>0x0F;
-
-return v;
-
-}
-
-
-dec8(v){
-
-const old=v&0xFF;
-
-v=(v-1)&0xFF;
-
-this.Z=v===0;
-this.N=1;
-this.H=(old&0x0F)===0;
-
-return v;
-
-}
-
-
-addA(v){
-
-v&=0xFF;
-
-const a=this.a;
-const result=a+v;
-
-this.a=result&0xFF;
-
-this.Z=this.a===0;
-this.N=0;
-this.H=((a&15)+(v&15))>15;
-this.CARRY=result>255;
-
-}
-
-
-adcA(v){
-
-v&=0xFF;
-
-const carry=this.CARRY?1:0;
-const a=this.a;
-const result=a+v+carry;
-
-this.a=result&0xFF;
-
-this.Z=this.a===0;
-this.N=0;
-this.H=((a&15)+(v&15)+carry)>15;
-this.CARRY=result>255;
-
-}
-
-
-subA(v){
-
-v&=0xFF;
-
-const a=this.a;
-const result=a-v;
-
-this.a=result&0xFF;
-
-this.Z=this.a===0;
-this.N=1;
-this.H=(a&15)<(v&15);
-this.CARRY=a<v;
-
-}
-
-
-sbcA(v){
-
-v&=0xFF;
-
-const carry=this.CARRY?1:0;
-const a=this.a;
-const result=a-v-carry;
-
-this.a=result&0xFF;
-
-this.Z=this.a===0;
-this.N=1;
-this.H=((a&15)-(v&15)-carry)<0;
-this.CARRY=result<0;
-
-}
-
-
-cpA(v){
-
-v&=0xFF;
-
-const a=this.a;
-const result=a-v;
-
-this.Z=(result&0xFF)===0;
-this.N=1;
-this.H=(a&15)<(v&15);
-this.CARRY=a<v;
-
-}
-
-
-xorA(v){
-
-this.a=
-(this.a^(v&0xFF))&0xFF;
-
-this.Z=this.a===0;
-this.N=0;
-this.H=0;
-this.CARRY=0;
-
-}
-
-
-orA(v){
-
-this.a=
-(this.a|(v&0xFF))&0xFF;
-
-this.Z=this.a===0;
-this.N=0;
-this.H=0;
-this.CARRY=0;
-
-}
-
-
-andA(v){
-
-this.a=
-(this.a&(v&0xFF))&0xFF;
-
-this.Z=this.a===0;
-this.N=0;
-this.H=1;
-this.CARRY=0;
-
-}
-
-
-/* =========================================================
-   CPU STEP
-========================================================= */
-
 step(){
 
 const interruptCycles=
@@ -3137,6 +2948,200 @@ try{
 const op=this.fetch8();
 
 
+const getR=(n)=>{
+
+switch(n){
+
+case 0:return this.b;
+case 1:return this.c;
+case 2:return this.d;
+case 3:return this.e;
+case 4:return this.h;
+case 5:return this.l;
+case 6:return this.read(this.hl);
+case 7:return this.a;
+
+}
+
+return 0;
+
+};
+
+
+const setR=(n,v)=>{
+
+v&=0xFF;
+
+switch(n){
+
+case 0:this.b=v;break;
+case 1:this.c=v;break;
+case 2:this.d=v;break;
+case 3:this.e=v;break;
+case 4:this.h=v;break;
+case 5:this.l=v;break;
+case 6:this.write(this.hl,v);break;
+case 7:this.a=v;break;
+
+}
+
+};
+
+
+const inc8=(v)=>{
+
+const old=v&0xFF;
+
+v=(v+1)&0xFF;
+
+this.Z=v===0;
+this.N=0;
+this.H=((old&0x0F)+1)>0x0F;
+
+return v;
+
+};
+
+
+const dec8=(v)=>{
+
+const old=v&0xFF;
+
+v=(v-1)&0xFF;
+
+this.Z=v===0;
+this.N=1;
+this.H=(old&0x0F)===0;
+
+return v;
+
+};
+
+
+const addA=(v)=>{
+
+v&=0xFF;
+
+const a=this.a;
+const result=a+v;
+
+this.a=result&0xFF;
+
+this.Z=this.a===0;
+this.N=0;
+this.H=((a&15)+(v&15))>15;
+this.CARRY=result>255;
+
+};
+
+
+const adcA=(v)=>{
+
+v&=0xFF;
+
+const carry=this.CARRY?1:0;
+const a=this.a;
+const result=a+v+carry;
+
+this.a=result&0xFF;
+
+this.Z=this.a===0;
+this.N=0;
+this.H=((a&15)+(v&15)+carry)>15;
+this.CARRY=result>255;
+
+};
+
+
+const subA=(v)=>{
+
+v&=0xFF;
+
+const a=this.a;
+const result=a-v;
+
+this.a=result&0xFF;
+
+this.Z=this.a===0;
+this.N=1;
+this.H=(a&15)<(v&15);
+this.CARRY=a<v;
+
+};
+
+
+const sbcA=(v)=>{
+
+v&=0xFF;
+
+const carry=this.CARRY?1:0;
+const a=this.a;
+const result=a-v-carry;
+
+this.a=result&0xFF;
+
+this.Z=this.a===0;
+this.N=1;
+this.H=((a&15)-(v&15)-carry)<0;
+this.CARRY=result<0;
+
+};
+
+
+const cpA=(v)=>{
+
+v&=0xFF;
+
+const a=this.a;
+const result=a-v;
+
+this.Z=(result&0xFF)===0;
+this.N=1;
+this.H=(a&15)<(v&15);
+this.CARRY=a<v;
+
+};
+
+
+const xorA=(v)=>{
+
+this.a=
+(this.a^(v&0xFF))&0xFF;
+
+this.Z=this.a===0;
+this.N=0;
+this.H=0;
+this.CARRY=0;
+
+};
+
+
+const orA=(v)=>{
+
+this.a=
+(this.a|(v&0xFF))&0xFF;
+
+this.Z=this.a===0;
+this.N=0;
+this.H=0;
+this.CARRY=0;
+
+};
+
+
+const andA=(v)=>{
+
+this.a=
+(this.a&(v&0xFF))&0xFF;
+
+this.Z=this.a===0;
+this.N=0;
+this.H=1;
+this.CARRY=0;
+
+};
+
+
 /* =========================================================
    LD r,r
 ========================================================= */
@@ -3157,9 +3162,9 @@ return 4;
 const dst=(op>>3)&7;
 const src=op&7;
 
-this.setR(
+setR(
 dst,
-this.getR(src)
+getR(src)
 );
 
 return(
@@ -3184,46 +3189,46 @@ op<=0xBF
 ){
 
 const r=op&7;
-const v=this.getR(r);
+const v=getR(r);
 
 if(op<0x88){
 
-this.addA(v);
+addA(v);
 
 }
 else if(op<0x90){
 
-this.adcA(v);
+adcA(v);
 
 }
 else if(op<0x98){
 
-this.subA(v);
+subA(v);
 
 }
 else if(op<0xA0){
 
-this.sbcA(v);
+sbcA(v);
 
 }
 else if(op<0xA8){
 
-this.andA(v);
+andA(v);
 
 }
 else if(op<0xB0){
 
-this.xorA(v);
+xorA(v);
 
 }
 else if(op<0xB8){
 
-this.orA(v);
+orA(v);
 
 }
 else{
 
-this.cpA(v);
+cpA(v);
 
 }
 
@@ -3242,9 +3247,9 @@ if(
 
 const r=(op>>3)&7;
 
-this.setR(
+setR(
 r,
-this.inc8(this.getR(r))
+inc8(getR(r))
 );
 
 return r===6 ? 12 : 4;
@@ -3258,9 +3263,9 @@ if(
 
 const r=(op>>3)&7;
 
-this.setR(
+setR(
 r,
-this.dec8(this.getR(r))
+dec8(getR(r))
 );
 
 return r===6 ? 12 : 4;
@@ -3471,10 +3476,8 @@ const v=this.bc;
 const result=old+v;
 
 this.N=0;
-
 this.H=
 ((old&0xFFF)+(v&0xFFF))>0xFFF;
-
 this.CARRY=result>0xFFFF;
 
 this.hl=result&0xFFFF;
@@ -3482,7 +3485,6 @@ this.hl=result&0xFFFF;
 return 8;
 
 }
-
 
 case 0x19:{
 
@@ -3491,10 +3493,8 @@ const v=this.de;
 const result=old+v;
 
 this.N=0;
-
 this.H=
 ((old&0xFFF)+(v&0xFFF))>0xFFF;
-
 this.CARRY=result>0xFFFF;
 
 this.hl=result&0xFFFF;
@@ -3502,7 +3502,6 @@ this.hl=result&0xFFFF;
 return 8;
 
 }
-
 
 case 0x29:{
 
@@ -3511,10 +3510,8 @@ const v=this.hl;
 const result=old+v;
 
 this.N=0;
-
 this.H=
 ((old&0xFFF)+(v&0xFFF))>0xFFF;
-
 this.CARRY=result>0xFFFF;
 
 this.hl=result&0xFFFF;
@@ -3523,7 +3520,6 @@ return 8;
 
 }
 
-
 case 0x39:{
 
 const old=this.hl;
@@ -3531,10 +3527,8 @@ const v=this.sp;
 const result=old+v;
 
 this.N=0;
-
 this.H=
 ((old&0xFFF)+(v&0xFFF))>0xFFF;
-
 this.CARRY=result>0xFFFF;
 
 this.hl=result&0xFFFF;
@@ -3705,35 +3699,35 @@ return 4;
 /* ALU immediate */
 
 case 0xC6:
-this.addA(this.fetch8());
+addA(this.fetch8());
 return 8;
 
 case 0xCE:
-this.adcA(this.fetch8());
+adcA(this.fetch8());
 return 8;
 
 case 0xD6:
-this.subA(this.fetch8());
+subA(this.fetch8());
 return 8;
 
 case 0xDE:
-this.sbcA(this.fetch8());
+sbcA(this.fetch8());
 return 8;
 
 case 0xE6:
-this.andA(this.fetch8());
+andA(this.fetch8());
 return 8;
 
 case 0xEE:
-this.xorA(this.fetch8());
+xorA(this.fetch8());
 return 8;
 
 case 0xF6:
-this.orA(this.fetch8());
+orA(this.fetch8());
 return 8;
 
 case 0xFE:
-this.cpA(this.fetch8());
+cpA(this.fetch8());
 return 8;
 
 
@@ -4414,7 +4408,7 @@ const group=cb>>6;
 const bit=(cb>>3)&7;
 
 let value=
-this.getR(r);
+getR(r);
 
 
 /* ROTATE / SHIFT */
@@ -4535,7 +4529,7 @@ break;
 }
 
 
-this.setR(r,result);
+setR(r,result);
 
 this.Z=result===0;
 this.N=0;
@@ -4569,7 +4563,7 @@ if(group===2){
 value&=
 ~(1<<bit);
 
-this.setR(r,value);
+setR(r,value);
 
 return r===6 ? 16 : 8;
 
@@ -4583,7 +4577,7 @@ if(group===3){
 value|=
 (1<<bit);
 
-this.setR(r,value);
+setR(r,value);
 
 return r===6 ? 16 : 8;
 
@@ -4757,6 +4751,8 @@ gbPPU.mode=0;
 }
 
 
+/* STAT register */
+
 let stat=
 gbPPU.stat&0x78;
 
@@ -4773,6 +4769,15 @@ stat|=0x04;
 }
 
 
+/*
+   LCD STAT interrupt sources.
+
+   Bit 6 = LY=LYC
+   Bit 5 = Mode 2
+   Bit 4 = Mode 1
+   Bit 3 = Mode 0
+*/
+
 let statIRQ=false;
 
 if(
@@ -4787,6 +4792,11 @@ statIRQ=true;
 }
 
 
+/*
+   STAT interrupts trigger on a rising edge
+   of the selected interrupt condition.
+*/
+
 if(statIRQ && !gbPPU.statIRQLine){
 
 gbMemory[0xFF0F]|=0x02;
@@ -4799,7 +4809,6 @@ gbPPU.stat=
 stat|0x80;
 
 }
-
 
 /* =========================================================
    PPU STEP
@@ -4822,7 +4831,6 @@ gbPPU.ly++;
 
 
 /* Start of VBlank */
-
 if(gbPPU.ly===144){
 
 gbMemory[0xFF0F]|=0x01;
@@ -4830,7 +4838,14 @@ gbMemory[0xFF0F]|=0x01;
 }
 
 
-/* Capture scrolling */
+/*
+   Capture scrolling for the new scanline.
+
+   The renderer will later use the SCX/SCY
+   that belongs to each individual line
+   instead of using the final values for
+   the entire frame.
+*/
 
 if(gbPPU.ly<144){
 
@@ -4841,7 +4856,6 @@ gbPPU.lineSCY[gbPPU.ly]=gbPPU.scy;
 
 
 /* New frame */
-
 if(gbPPU.ly>=154){
 
 gbPPU.ly=0;
@@ -4858,7 +4872,6 @@ gbUpdateSTAT();
 
 }
 
-
 /* =========================================================
    PPU PALETTE
 ========================================================= */
@@ -4874,14 +4887,14 @@ palette>>
 
 
 /* =========================================================
-   PPU DRAW — OPTIMIZED TILE CACHE
+   PPU DRAW
 ========================================================= */
 
 function gbPPUDrawBackground(){
 
 const ctx=gbCtx;
+
 const image=gbImage;
-const data=image.data;
 
 const palette=[
 255,
@@ -4892,15 +4905,31 @@ const palette=[
 
 const bgColorIndex=
 gbBGColorIndex;
-
 bgColorIndex.fill(0);
 
 
-/* =========================================================
-   BACKGROUND
-========================================================= */
+/* BACKGROUND */
+
+for(let y=0;y<144;y++){
+
+for(let screenX=0;screenX<160;screenX++){
+
+let color=0;
+
 
 if(gbPPU.lcdc&0x01){
+
+const worldX=
+(screenX+gbPPU.lineSCX[y])&255;
+
+const worldY=
+(y+gbPPU.lineSCY[y])&255;
+
+const tileX=
+worldX>>3;
+
+const tileY=
+worldY>>3;
 
 const mapBase=
 (gbPPU.lcdc&0x08)
@@ -4909,51 +4938,24 @@ const mapBase=
 :
 0x9800;
 
-const signedMode=
-!(gbPPU.lcdc&0x10);
-
-for(let y=0;y<144;y++){
-
-const worldY=
-(y+gbPPU.lineSCY[y])&255;
-
-const tileY=
-worldY>>3;
-
-const row=
-worldY&7;
-
-let screenX=0;
-
-while(screenX<160){
-
-const worldX=
-(screenX+gbPPU.lineSCX[y])&255;
-
-const tileX=
-worldX>>3;
-
 const mapAddress=
 mapBase+
-(tileY<<5)+
+tileY*32+
 tileX;
 
 const tileIndex=
-gbVRAM[
-mapAddress-0x8000
-];
+gbVRAM[mapAddress-0x8000];
 
-let tile;
+let tileAddress;
 
-if(signedMode){
+if(gbPPU.lcdc&0x10){
 
-/*
-   Signed tile addressing:
-   0x8800-0x97FF.
+tileAddress=
+0x8000+
+tileIndex*16;
 
-   Physical cache slot:
-   128 + signed tile index.
-*/
+}
+else{
 
 const signedTile=
 tileIndex<128
@@ -4962,48 +4964,42 @@ tileIndex
 :
 tileIndex-256;
 
-tile=
-128+signedTile;
-
-}
-else{
-
-tile=tileIndex;
+tileAddress=
+0x9000+
+signedTile*16;
 
 }
 
-gbDecodeTile(tile);
 
-const tileCacheBase=
-(tile<<6)+
-(row<<3);
+const row=
+worldY&7;
 
-const pixelInTile=
-worldX&7;
-
-const count=
-Math.min(
-8-pixelInTile,
-160-screenX
-);
-
-const outBase=
-(y*160+screenX)*4;
-
-for(let p=0;p<count;p++){
-
-const color=
-gbTileCache[
-tileCacheBase+
-pixelInTile+
-p
+const low=
+gbVRAM[
+tileAddress+
+row*2-
+0x8000
 ];
 
-const pos=
-screenX+p;
+const high=
+gbVRAM[
+tileAddress+
+row*2+1-
+0x8000
+];
+
+const bit=
+7-(worldX&7);
+
+color=
+((high>>bit)&1)*2+
+((low>>bit)&1);
+
+}
+
 
 bgColorIndex[
-y*160+pos
+y*160+screenX
 ]=color;
 
 const shade=
@@ -5015,61 +5011,26 @@ color
 ];
 
 const i=
-outBase+
-p*4;
+(y*160+screenX)*4;
 
-data[i]=shade;
-data[i+1]=shade;
-data[i+2]=shade;
-data[i+3]=255;
-
-}
-
-screenX+=count;
-
-}
-
-}
-
-}
-else{
-
-/* LCDC bit 0 disabled: blank background. */
-
-for(let i=0;i<160*144;i++){
-
-const j=i*4;
-
-data[j]=255;
-data[j+1]=255;
-data[j+2]=255;
-data[j+3]=255;
+image.data[i]=shade;
+image.data[i+1]=shade;
+image.data[i+2]=shade;
+image.data[i+3]=255;
 
 }
 
 }
 
 
-/* =========================================================
-   WINDOW
-========================================================= */
+/* WINDOW */
 
 if(gbPPU.lcdc&0x20){
 
-const wy=
-gbPPU.wy;
-
-const wx=
-gbPPU.wx-7;
+const wy=gbPPU.wy;
+const wx=gbPPU.wx-7;
 
 if(wy<144){
-
-const mapBase=
-(gbPPU.lcdc&0x40)
-?
-0x9C00
-:
-0x9800;
 
 for(let y=Math.max(0,wy);y<144;y++){
 
@@ -5079,38 +5040,46 @@ y-wy;
 const tileY=
 windowY>>3;
 
-const row=
-windowY&7;
-
-let screenX=
-Math.max(0,wx);
-
-if(screenX<160){
-
-while(screenX<160){
+for(
+let screenX=Math.max(0,wx);
+screenX<160;
+screenX++
+){
 
 const windowX=
 screenX-wx;
+
+if(windowX<0)
+continue;
 
 const tileX=
 windowX>>3;
 
 if(tileX>=32)
-break;
+continue;
+
+const mapBase=
+(gbPPU.lcdc&0x40)
+?
+0x9C00
+:
+0x9800;
 
 const tileIndex=
 gbVRAM[
 mapBase+
-(tileY<<5)+
+tileY*32+
 tileX-
 0x8000
 ];
 
-let tile;
+let tileAddress;
 
 if(gbPPU.lcdc&0x10){
 
-tile=tileIndex;
+tileAddress=
+0x8000+
+tileIndex*16;
 
 }
 else{
@@ -5122,43 +5091,38 @@ tileIndex
 :
 tileIndex-256;
 
-tile=
-128+signedTile;
+tileAddress=
+0x9000+
+signedTile*16;
 
 }
 
-gbDecodeTile(tile);
+const row=
+windowY&7;
 
-const tileCacheBase=
-(tile<<6)+
-(row<<3);
-
-const pixelInTile=
-windowX&7;
-
-const count=
-Math.min(
-8-pixelInTile,
-160-screenX
-);
-
-const outBase=
-(y*160+screenX)*4;
-
-for(let p=0;p<count;p++){
-
-const color=
-gbTileCache[
-tileCacheBase+
-pixelInTile+
-p
+const low=
+gbVRAM[
+tileAddress+
+row*2-
+0x8000
 ];
 
-const pos=
-screenX+p;
+const high=
+gbVRAM[
+tileAddress+
+row*2+1-
+0x8000
+];
+
+const bit=
+7-(windowX&7);
+
+const color=
+((high>>bit)&1)*2+
+((low>>bit)&1);
 
 bgColorIndex[
-y*160+pos
+y*160+screenX
 ]=color;
 
 const shade=
@@ -5170,17 +5134,12 @@ color
 ];
 
 const i=
-outBase+
-p*4;
+(y*160+screenX)*4;
 
-data[i]=shade;
-data[i+1]=shade;
-data[i+2]=shade;
-data[i+3]=255;
-
-}
-
-screenX+=count;
+image.data[i]=shade;
+image.data[i+1]=shade;
+image.data[i+2]=shade;
+image.data[i+3]=255;
 
 }
 
@@ -5190,12 +5149,8 @@ screenX+=count;
 
 }
 
-}
 
-
-/* =========================================================
-   SPRITES
-========================================================= */
+/* SPRITES */
 
 if(gbPPU.lcdc&0x02){
 
@@ -5271,16 +5226,15 @@ actualY-=8;
 }
 
 
-/*
-   Sprite tiles always use the normal 0x8000
-   unsigned tile addressing.
-*/
+const tileOffset=
+tileNumber*16+
+actualY*2;
 
-gbDecodeTile(tileNumber);
+const low=
+gbVRAM[tileOffset];
 
-const tileCacheBase=
-(tileNumber<<6)+
-(actualY<<3);
+const high=
+gbVRAM[tileOffset+1];
 
 
 for(let px=0;px<8;px++){
@@ -5293,10 +5247,8 @@ px
 7-px;
 
 const color=
-gbTileCache[
-tileCacheBase+
-actualX
-];
+((high>>actualX)&1)*2+
+((low>>actualX)&1);
 
 if(color===0)
 continue;
@@ -5338,10 +5290,10 @@ color
 const i=
 (screenY*160+screenX)*4;
 
-data[i]=shade;
-data[i+1]=shade;
-data[i+2]=shade;
-data[i+3]=255;
+image.data[i]=shade;
+image.data[i+1]=shade;
+image.data[i+2]=shade;
+image.data[i+3]=255;
 
 }
 
@@ -5393,14 +5345,14 @@ cycles+=actual;
 
 }
 
-
-/* Render the frame */
-
+/*
+   Render the frame using the scroll state
+   captured for each scanline.
+*/
 gbPPUDrawBackground();
 
 }
-
-
+   
 /* =========================================================
    TIMER
 ========================================================= */
@@ -5424,7 +5376,6 @@ const frequencies=[
 64,
 256
 ];
-
 
 const threshold=
 frequencies[
@@ -5706,4 +5657,3 @@ loadGBROM();
 
 </body>
 </html>
-```
