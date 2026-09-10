@@ -1,5 +1,4 @@
 <!doctype html>
-
 <html>
 <head>
 
@@ -31,6 +30,29 @@ align-items:center;
 justify-content:space-between;
 padding:0 12px;
 box-sizing:border-box;
+gap:8px;
+}
+
+#barLeft{
+display:flex;
+align-items:center;
+gap:10px;
+min-width:0;
+}
+
+#barTitle{
+white-space:nowrap;
+}
+
+#romSelect{
+max-width:230px;
+height:32px;
+background:#293426;
+color:#e5efc8;
+border:1px solid #607052;
+border-radius:6px;
+padding:4px 7px;
+font-weight:bold;
 }
 
 button{
@@ -96,11 +118,18 @@ touch-action:none;
 user-select:none;
 }
 
-#jumpBtn{
-width:105px;
-height:65px;
+#actionButtons{
+display:flex;
+align-items:center;
+gap:10px;
+}
+
+#buttonA,
+#buttonB{
+width:75px;
+height:75px;
 border-radius:50%;
-font-size:17px;
+font-size:18px;
 background:#38482f;
 border:2px solid #91a978;
 color:#eef6d5;
@@ -109,15 +138,17 @@ touch-action:none;
 user-select:none;
 }
 
+#buttonA:active,
+#buttonB:active,
 #startBtn:active,
-#selectBtn:active,
-#jumpBtn:active{
+#selectBtn:active{
 transform:scale(.94);
 }
 
+#buttonA:focus,
+#buttonB:focus,
 #startBtn:focus,
-#selectBtn:focus,
-#jumpBtn:focus{
+#selectBtn:focus{
 outline:3px solid #dce9b8;
 outline-offset:3px;
 }
@@ -130,12 +161,32 @@ outline-offset:3px;
 
 <div id="bar">
 
-<b>RETRO LAND — GAME BOY STYLE</b>
+<div id="barLeft">
+
+<b id="barTitle">
+RETRO LAND — GAME BOY STYLE
+</b>
+
+<select id="romSelect">
+<option value="">Loading ROMs...</option>
+</select>
+
+</div>
 
 <span>
-<button id="pause">PAUSE</button>
-<button id="reset">RESET</button>
-<button id="sound">SOUND</button>
+
+<button id="pause">
+PAUSE
+</button>
+
+<button id="reset">
+RESET
+</button>
+
+<button id="sound">
+SOUND
+</button>
+
 </span>
 
 </div>
@@ -152,7 +203,7 @@ tabindex="0"></canvas>
 
 <div id="hint">
 
-DualSense: D-pad / Left Stick = Move · X = A / Jump · O = B / Dash · OPTIONS = Pause
+DualSense: D-pad / Left Stick = Move · X = A · O = B · OPTIONS = Pause
 
 </div>
 
@@ -166,9 +217,17 @@ START
 SELECT
 </button>
 
-<button id="jumpBtn" type="button">
-JUMP
+<div id="actionButtons">
+
+<button id="buttonB" type="button">
+B
 </button>
+
+<button id="buttonA" type="button">
+A
+</button>
+
+</div>
 
 </div>
 
@@ -178,7 +237,7 @@ JUMP
 
 
 /* =========================================================
-   GAME
+   CANVAS
 ========================================================= */
 
 const c=document.getElementById("c");
@@ -188,10 +247,6 @@ const W=160;
 const H=144;
 
 x.imageSmoothingEnabled=false;
-
-   /* =========================================================
-   PERFORMANCE BUFFERS
-========================================================= */
 
 const gbCtx=x;
 
@@ -208,6 +263,36 @@ new Uint8Array(
 
 
 /* =========================================================
+   PALETTE
+========================================================= */
+
+const gbPalette=[
+255,
+192,
+96,
+0
+];
+
+const gbShadeTable=
+new Uint8Array(256*4);
+
+for(let p=0;p<256;p++){
+
+for(let col=0;col<4;col++){
+
+gbShadeTable[
+p*4+col
+]=
+gbPalette[
+(p>>(col*2))&3
+];
+
+}
+
+}
+
+
+/* =========================================================
    INPUT
 ========================================================= */
 
@@ -217,7 +302,8 @@ r:0,
 j:0,
 d:0
 };
-   const keyboardInput={
+
+const keyboardInput={
 left:0,
 right:0,
 up:0,
@@ -236,7 +322,8 @@ b:0
 };
 
 const virtualInput={
-a:0
+a:0,
+b:0
 };
 
 let pause=0;
@@ -252,10 +339,12 @@ let opt=0;
 ========================================================= */
 
 const gbJoypad={
+
 A:0,
 B:0,
 SELECT:0,
 START:0,
+
 UP:0,
 DOWN:0,
 LEFT:0,
@@ -263,18 +352,13 @@ RIGHT:0,
 
 selectButtons:1,
 selectDpad:1
+
 };
 
 
 function gbJoypadRead(){
 
 let value=0xCF;
-
-
-/*
-   Bit 5 = 0 -> buttons selected
-   Bit 4 = 0 -> D-pad selected
-*/
 
 if(gbJoypad.selectButtons){
 
@@ -299,7 +383,6 @@ value&=~0x08;
 
 }
 
-
 if(gbJoypad.selectDpad){
 
 value|=0x10;
@@ -323,7 +406,6 @@ value&=~0x08;
 
 }
 
-
 return value&0xFF;
 
 }
@@ -334,18 +416,24 @@ return value&0xFF;
 ========================================================= */
 
 const p={
+
 x:20,
 y:110,
 w:12,
 h:16,
+
 vx:0,
 vy:0,
+
 g:0,
 face:1,
+
 coins:0,
 lives:3,
+
 _j:0,
 _d:0
+
 };
 
 
@@ -402,9 +490,11 @@ const coins=[
 [1875,125]
 
 ].map(q=>({
+
 x:q[0],
 y:q[1],
 got:0
+
 }));
 
 
@@ -417,12 +507,14 @@ const foes=[
 [2190,130,-.35]
 
 ].map(q=>({
+
 x:q[0],
 y:q[1],
 w:12,
 h:12,
 v:q[2],
 alive:1
+
 }));
 
 
@@ -454,46 +546,67 @@ a.y+a.h>b[1]
 
 
 /* =========================================================
-   SOUND
+   SIMPLE UI SOUND
 ========================================================= */
 
 function beep(f,t){
 
-if(!sound)return;
+if(!sound)
+return;
 
 try{
 
-window.ac=
-window.ac||
-new(window.AudioContext||window.webkitAudioContext)();
+if(!window.uiAudio){
 
-let o=ac.createOscillator();
-let g=ac.createGain();
+window.uiAudio=
+new(
+window.AudioContext||
+window.webkitAudioContext
+)();
+
+}
+
+if(
+window.uiAudio.state==="suspended"
+){
+
+window.uiAudio.resume();
+
+}
+
+let o=
+window.uiAudio.createOscillator();
+
+let g=
+window.uiAudio.createGain();
 
 o.frequency.value=f;
 o.type="square";
 
-g.gain.value=.035;
+g.gain.value=.025;
 
 o.connect(g);
-g.connect(ac.destination);
+g.connect(window.uiAudio.destination);
 
 o.start();
 
 g.gain.exponentialRampToValueAtTime(
 .0001,
-ac.currentTime+t
+window.uiAudio.currentTime+t
 );
 
-o.stop(ac.currentTime+t);
+o.stop(
+window.uiAudio.currentTime+t
+);
 
-}catch(e){}
+}
+catch(e){}
 
 }
 
 
 /* =========================================================
-   RESET
+   RESET GAME
 ========================================================= */
 
 function reset(){
@@ -519,12 +632,13 @@ pause=0;
 
 
 /* =========================================================
-   UPDATE
+   UPDATE GAME
 ========================================================= */
 
 function update(dt){
 
-if(pause||win)return;
+if(pause||win)
+return;
 
 p.vy+=.30*dt;
 
@@ -642,7 +756,6 @@ p.vy=0;
 p.g=1;
 
 }
-
 else if(
 p.vy<0 &&
 p.y>=q[1]+q[3]-4
@@ -671,7 +784,6 @@ msg="GAME OVER - RESET";
 pause=1;
 
 }
-
 else{
 
 p.x=Math.max(
@@ -742,7 +854,6 @@ p.vy=-3.8;
 beep(120,.08);
 
 }
-
 else{
 
 p.lives--;
@@ -787,7 +898,7 @@ Math.min(2080,p.x-105)
 
 
 /* =========================================================
-   DRAW RETRO LAND
+   GAME DRAW
 ========================================================= */
 
 function draw(){
@@ -1097,7 +1208,7 @@ x.textAlign="left";
 
 
 /* =========================================================
-   GAME BOY START / SELECT / JUMP BUTTONS
+   GAME BOY BUTTONS
 ========================================================= */
 
 const startBtn=
@@ -1106,8 +1217,11 @@ document.getElementById("startBtn");
 const selectBtn=
 document.getElementById("selectBtn");
 
-const jumpBtn=
-document.getElementById("jumpBtn");
+const buttonA=
+document.getElementById("buttonA");
+
+const buttonB=
+document.getElementById("buttonB");
 
 
 function pressGBButton(name,e){
@@ -1143,6 +1257,7 @@ pressGBButton("START",e);
 {passive:false}
 );
 
+
 selectBtn.addEventListener(
 "pointerdown",
 function(e){
@@ -1155,10 +1270,10 @@ pressGBButton("SELECT",e);
 
 
 /* =========================================================
-   VIRTUAL JUMP -> GAME BOY A
+   VIRTUAL A
 ========================================================= */
 
-function jumpButton(e){
+function pressA(e){
 
 if(e){
 
@@ -1175,15 +1290,49 @@ function(){
 virtualInput.a=0;
 
 },
-600
+150
 );
 
 }
 
 
-jumpBtn.addEventListener(
+buttonA.addEventListener(
 "pointerdown",
-jumpButton,
+pressA,
+{passive:false}
+);
+
+
+/* =========================================================
+   VIRTUAL B
+========================================================= */
+
+function pressB(e){
+
+if(e){
+
+e.preventDefault();
+e.stopPropagation();
+
+}
+
+virtualInput.b=1;
+
+setTimeout(
+function(){
+
+virtualInput.b=0;
+
+},
+150
+);
+
+}
+
+
+buttonB.addEventListener(
+"pointerdown",
+pressB,
 {passive:false}
 );
 
@@ -1214,33 +1363,27 @@ e.preventDefault();
 
 }
 
-if(z==="arrowleft" || z==="a"){
+if(z==="arrowleft" || z==="a")
 keyboardInput.left=1;
-}
 
-if(z==="arrowright" || z==="d"){
+if(z==="arrowright" || z==="d")
 keyboardInput.right=1;
-}
 
-if(z==="arrowup" || z==="w"){
+if(z==="arrowup" || z==="w")
 keyboardInput.up=1;
-}
 
-if(z==="arrowdown"){
+if(z==="arrowdown")
 keyboardInput.down=1;
-}
 
-if(z===" "){
+if(z===" ")
 keyboardInput.a=1;
-}
 
 if(
 z==="z" ||
 z==="x" ||
 z==="shift"
-){
+)
 keyboardInput.b=1;
-}
 
 if(z==="escape"){
 
@@ -1275,35 +1418,30 @@ e.preventDefault();
 
 }
 
-if(z==="arrowleft" || z==="a"){
+if(z==="arrowleft" || z==="a")
 keyboardInput.left=0;
-}
 
-if(z==="arrowright" || z==="d"){
+if(z==="arrowright" || z==="d")
 keyboardInput.right=0;
-}
 
-if(z==="arrowup" || z==="w"){
+if(z==="arrowup" || z==="w")
 keyboardInput.up=0;
-}
 
-if(z==="arrowdown"){
+if(z==="arrowdown")
 keyboardInput.down=0;
-}
 
-if(z===" "){
+if(z===" ")
 keyboardInput.a=0;
-}
 
 if(
 z==="z" ||
 z==="x" ||
 z==="shift"
-){
+)
 keyboardInput.b=0;
-}
 
 }
+
 
 document.addEventListener(
 "keydown",
@@ -1319,7 +1457,7 @@ gameKeyUp,
 
 
 /* =========================================================
-   PAGE INPUT BLOCKING
+   BLOCK PAGE SCROLL
 ========================================================= */
 
 window.addEventListener(
@@ -1344,60 +1482,10 @@ e.preventDefault();
 
 
 /* =========================================================
-   TOP BUTTONS
-========================================================= */
-
-document.getElementById(
-"pause"
-).onclick=function(){
-
-pause=!pause;
-
-};
-
-
-document.getElementById(
-"reset"
-).onclick=function(){
-
-reset();
-
-if(gbROMLoaded){
-
-gbReset();
-
-}
-
-};
-
-
-document.getElementById(
-"sound"
-).onclick=function(){
-
-sound=!sound;
-
-document.getElementById(
-"sound"
-).textContent=
-sound
-?
-"SOUND ON"
-:
-"SOUND";
-
-if(sound)
-beep(700,.05);
-
-};
-
-
-/* =========================================================
    GAMEPAD
 ========================================================= */
 
 function gp(){
-
 
 let pads=
 navigator.getGamepads
@@ -1420,10 +1508,6 @@ break;
 }
 
 
-/* =========================================================
-   RESET GAMEPAD STATE
-========================================================= */
-
 gamepadInput.left=0;
 gamepadInput.right=0;
 gamepadInput.up=0;
@@ -1436,144 +1520,104 @@ if(g){
 
 let ax=g.axes||[];
 
-
-/* =========================================================
-   D-PAD
-========================================================= */
-
 let left=false;
 let right=false;
 let up=false;
 let down=false;
 
 
-/* STANDARD GAMEPAD D-PAD */
-
 if(
 g.buttons[12] &&
 g.buttons[12].pressed
-){
+)
 up=true;
-}
 
 if(
 g.buttons[13] &&
 g.buttons[13].pressed
-){
+)
 down=true;
-}
 
 if(
 g.buttons[14] &&
 g.buttons[14].pressed
-){
+)
 left=true;
-}
 
 if(
 g.buttons[15] &&
 g.buttons[15].pressed
-){
+)
 right=true;
-}
 
 
-/* LEFT STICK */
-
-if((ax[0]||0)<-.35){
+if((ax[0]||0)<-.35)
 left=true;
-}
 
-if((ax[0]||0)>.35){
+if((ax[0]||0)>.35)
 right=true;
-}
 
-if((ax[1]||0)<-.35){
+if((ax[1]||0)<-.35)
 up=true;
-}
 
-if((ax[1]||0)>.35){
+if((ax[1]||0)>.35)
 down=true;
-}
 
 
-/* DUALSENSE D-PAD AXIS */
+/* DualSense D-pad axis */
 
 if(Number.isFinite(ax[9])){
 
 let v=ax[9];
 
-if(Math.abs(v+1.000)<0.12){
+if(Math.abs(v+1.000)<0.12)
 up=true;
-}
 
-if(Math.abs(v-0.14286)<0.12){
+if(Math.abs(v-0.14286)<0.12)
 down=true;
-}
 
-if(Math.abs(v-0.71429)<0.12){
+if(Math.abs(v-0.71429)<0.12)
 left=true;
-}
 
-if(Math.abs(v+0.42857)<0.12){
+if(Math.abs(v+0.42857)<0.12)
 right=true;
-}
 
 if(Math.abs(v+0.71429)<0.12){
+
 up=true;
 right=true;
+
 }
 
 if(Math.abs(v+0.14286)<0.12){
+
 down=true;
 right=true;
+
 }
 
 if(Math.abs(v-0.42857)<0.12){
+
 left=true;
 down=true;
+
 }
 
 if(Math.abs(v-1.000)<0.12){
+
 left=true;
 up=true;
+
 }
 
-} 
+}
 
 
-/* SAVE GAMEPAD D-PAD */
+gamepadInput.left=left?1:0;
+gamepadInput.right=right?1:0;
+gamepadInput.up=up?1:0;
+gamepadInput.down=down?1:0;
 
-gamepadInput.left=
-left
-?
-1
-:
-0;
-
-gamepadInput.right=
-right
-?
-1
-:
-0;
-
-gamepadInput.up=
-up
-?
-1
-:
-0;
-
-gamepadInput.down=
-down
-?
-1
-:
-0;
-
-
-/* X = GAME BOY A */
 
 gamepadInput.a=
 (
@@ -1586,8 +1630,6 @@ g.buttons[0].pressed
 0;
 
 
-/* O = GAME BOY B */
-
 gamepadInput.b=
 (
 g.buttons[1] &&
@@ -1598,8 +1640,6 @@ g.buttons[1].pressed
 :
 0;
 
-
-/* OPTIONS = PAUSE */
 
 let options=
 g.buttons[9] &&
@@ -1613,21 +1653,15 @@ opt=1;
 
 }
 
-if(!options){
-
+if(!options)
 opt=0;
-
-}
 
 }
 
 
 /* =========================================================
-   COMBINE KEYBOARD + GAMEPAD + VIRTUAL
+   COMBINE INPUT
 ========================================================= */
-
-
-/* FAKE GAME */
 
 k.l=
 (
@@ -1665,17 +1699,14 @@ virtualInput.a
 k.d=
 (
 keyboardInput.b ||
-gamepadInput.b
+gamepadInput.b ||
+virtualInput.b
 )
 ?
 1
 :
 0;
 
-
-/* =========================================================
-   GAME BOY D-PAD
-========================================================= */
 
 gbJoypad.LEFT=
 (
@@ -1718,10 +1749,6 @@ gamepadInput.down
 0;
 
 
-/* =========================================================
-   GAME BOY A / B
-========================================================= */
-
 gbJoypad.A=
 (
 keyboardInput.a ||
@@ -1736,7 +1763,8 @@ virtualInput.a
 gbJoypad.B=
 (
 keyboardInput.b ||
-gamepadInput.b
+gamepadInput.b ||
+virtualInput.b
 )
 ?
 1
@@ -1747,6 +1775,8 @@ gamepadInput.b
 requestAnimationFrame(gp);
 
 }
+
+
 /* =========================================================
    GAME BOY MEMORY
 ========================================================= */
@@ -1762,19 +1792,103 @@ new Uint8Array(0xA0);
 
 
 /* =========================================================
-   GAME BOY CARTRIDGE
+   PERFORMANCE TILE CACHE
+========================================================= */
+
+/*
+   0x8000-0x97FF contains 384 possible 8x8 tile slots
+   used by the two DMG background addressing modes.
+
+   Each tile is decoded only when its VRAM data changes.
+*/
+
+const gbTileCache=
+new Uint8Array(
+384*64
+);
+
+const gbTileDirty=
+new Uint8Array(
+384
+);
+
+gbTileDirty.fill(1);
+
+
+function gbInvalidateTile(addr){
+
+const physical=
+(addr-0x8000)>>4;
+
+if(
+physical>=0 &&
+physical<384
+){
+
+gbTileDirty[physical]=1;
+
+}
+
+}
+
+
+function gbDecodeTile(tile){
+
+if(
+tile<0 ||
+tile>=384
+)
+return;
+
+if(!gbTileDirty[tile])
+return;
+
+const base=
+tile*64;
+
+const vbase=
+tile*16;
+
+for(let row=0;row<8;row++){
+
+const low=
+gbVRAM[vbase+row*2];
+
+const high=
+gbVRAM[vbase+row*2+1];
+
+const out=
+base+row*8;
+
+for(let px=0;px<8;px++){
+
+const bit=7-px;
+
+gbTileCache[out+px]=
+((high>>bit)&1)*2+
+((low>>bit)&1);
+
+}
+
+}
+
+gbTileDirty[tile]=0;
+
+}
+
+
+/* =========================================================
+   CARTRIDGE
 ========================================================= */
 
 const gbCartridge={
 
 rom:null,
-
 romSize:0,
 
 ram:new Uint8Array(0x8000),
 
 romBank:1,
-
 ramBank:0,
 
 mbcType:0,
@@ -1787,28 +1901,32 @@ bankingMode:0
 
 
 /* =========================================================
-   GAME BOY PPU
+   PPU
 ========================================================= */
 
 const gbPPU={
 
 lcdc:0x91,
 stat:0x85,
+
 scy:0x00,
 scx:0x00,
+
 lyc:0x00,
+
 bgp:0xFC,
 obp0:0xFF,
 obp1:0xFF,
+
 wy:0x00,
 wx:0x00,
+
 ly:0x00,
 cycles:0,
 mode:2,
 
 statIRQLine:false,
 
-/* Scroll values captured for each scanline */
 lineSCX:new Uint8Array(144),
 lineSCY:new Uint8Array(144)
 
@@ -1816,7 +1934,7 @@ lineSCY:new Uint8Array(144)
 
 
 /* =========================================================
-   GAME BOY TIMER
+   TIMER
 ========================================================= */
 
 const gbTimer={
@@ -1826,6 +1944,32 @@ tima:0,
 tma:0,
 tac:0,
 counter:0
+
+};
+
+
+/* =========================================================
+   AUDIO STATE
+========================================================= */
+
+const gbAPU={
+
+active:[
+0,
+0,
+0,
+0
+],
+
+phase:[
+0,
+0,
+0,
+0
+],
+
+noisePhase:0,
+noiseLFSR:0x7FFF
 
 };
 
@@ -1888,10 +2032,10 @@ gbCartridge.mbcType===1 &&
 gbCartridge.bankingMode===0
 ){
 
-bank=(gbCartridge.ramBank&3)<<5;
+bank=
+(gbCartridge.ramBank&3)<<5;
 
 }
-
 
 const index=
 bank*0x4000+addr;
@@ -1935,16 +2079,9 @@ function gbRead(addr){
 addr&=0xFFFF;
 
 
-/* ROM */
-
-if(addr<0x8000){
-
+if(addr<0x8000)
 return gbReadROM(addr);
 
-}
-
-
-/* VRAM */
 
 if(
 addr>=0x8000 &&
@@ -1957,8 +2094,6 @@ addr-0x8000
 
 }
 
-
-/* CARTRIDGE RAM */
 
 if(
 addr>=0xA000 &&
@@ -1979,8 +2114,6 @@ bank*0x2000+
 }
 
 
-/* WRAM */
-
 if(
 addr>=0xC000 &&
 addr<0xE000
@@ -1990,8 +2123,6 @@ return gbMemory[addr];
 
 }
 
-
-/* ECHO */
 
 if(
 addr>=0xE000 &&
@@ -2005,8 +2136,6 @@ addr-0x2000
 }
 
 
-/* OAM */
-
 if(
 addr>=0xFE00 &&
 addr<=0xFE9F
@@ -2019,8 +2148,6 @@ addr-0xFE00
 }
 
 
-/* UNUSABLE */
-
 if(
 addr>=0xFEA0 &&
 addr<0xFF00
@@ -2031,49 +2158,69 @@ return 0xFF;
 }
 
 
-/* JOYPAD */
-
-if(addr===0xFF00){
-
+if(addr===0xFF00)
 return gbJoypadRead();
 
-}
 
-
-/* TIMER */
-
-if(addr===0xFF04){
-
+if(addr===0xFF04)
 return(
 gbTimer.div>>8
 )&0xFF;
 
-}
-
-if(addr===0xFF05){
-
+if(addr===0xFF05)
 return gbTimer.tima;
 
-}
-
-if(addr===0xFF06){
-
+if(addr===0xFF06)
 return gbTimer.tma;
 
-}
-
-if(addr===0xFF07){
-
+if(addr===0xFF07)
 return gbTimer.tac|0xF8;
 
+
+if(addr===0xFF0F)
+return gbMemory[0xFF0F];
+
+
+/* APU */
+
+if(addr===0xFF26){
+
+let value=
+gbMemory[0xFF26]&0x80;
+
+if(gbAPU.active[0])
+value|=0x01;
+
+if(gbAPU.active[1])
+value|=0x02;
+
+if(gbAPU.active[2])
+value|=0x04;
+
+if(gbAPU.active[3])
+value|=0x08;
+
+return value|0x70;
+
 }
 
 
-/* IF */
+if(
+addr>=0xFF10 &&
+addr<=0xFF25
+){
 
-if(addr===0xFF0F){
+return gbMemory[addr];
 
-return gbMemory[0xFF0F];
+}
+
+
+if(
+addr>=0xFF30 &&
+addr<=0xFF3F
+){
+
+return gbMemory[addr];
 
 }
 
@@ -2084,10 +2231,7 @@ if(addr===0xFF40)
 return gbPPU.lcdc;
 
 if(addr===0xFF41)
-return(
-gbPPU.stat|
-0x80
-);
+return gbPPU.stat|0x80;
 
 if(addr===0xFF42)
 return gbPPU.scy;
@@ -2117,16 +2261,9 @@ if(addr===0xFF4B)
 return gbPPU.wx;
 
 
-/* IE */
-
-if(addr===0xFFFF){
-
+if(addr===0xFFFF)
 return gbMemory[0xFFFF];
 
-}
-
-
-/* NORMAL RAM */
 
 return gbMemory[addr];
 
@@ -2134,7 +2271,7 @@ return gbMemory[addr];
 
 
 /* =========================================================
-   OAM DMA
+   DMA
 ========================================================= */
 
 function gbDMA(value){
@@ -2148,6 +2285,110 @@ gbOAM[i]=
 gbRead(
 (source+i)&0xFFFF
 );
+
+}
+
+}
+
+
+/* =========================================================
+   AUDIO WRITE HANDLING
+========================================================= */
+
+function gbAPUWrite(addr,value){
+
+gbMemory[addr]=value&0xFF;
+
+
+/* APU master */
+
+if(addr===0xFF26){
+
+if(!(value&0x80)){
+
+gbAPU.active[0]=0;
+gbAPU.active[1]=0;
+gbAPU.active[2]=0;
+gbAPU.active[3]=0;
+
+for(
+let a=0xFF10;
+a<=0xFF25;
+a++
+){
+
+gbMemory[a]=0;
+
+}
+
+gbMemory[0xFF26]=0;
+
+}
+else{
+
+gbMemory[0xFF26]=
+(value&0x80)|0x70;
+
+}
+
+return;
+
+}
+
+
+/* CH1 trigger */
+
+if(addr===0xFF14 && (value&0x80)){
+
+if((gbMemory[0xFF12]&0xF8)!==0){
+
+gbAPU.active[0]=1;
+gbAPU.phase[0]=0;
+
+}
+
+}
+
+
+/* CH2 trigger */
+
+if(addr===0xFF19 && (value&0x80)){
+
+if((gbMemory[0xFF17]&0xF8)!==0){
+
+gbAPU.active[1]=1;
+gbAPU.phase[1]=0;
+
+}
+
+}
+
+
+/* CH3 trigger */
+
+if(addr===0xFF1E && (value&0x80)){
+
+if(gbMemory[0xFF1A]&0x80){
+
+gbAPU.active[2]=1;
+gbAPU.phase[2]=0;
+
+}
+
+}
+
+
+/* CH4 trigger */
+
+if(addr===0xFF23 && (value&0x80)){
+
+if((gbMemory[0xFF21]&0xF8)!==0){
+
+gbAPU.active[3]=1;
+gbAPU.noisePhase=0;
+gbAPU.noiseLFSR=0x7FFF;
+
+}
 
 }
 
@@ -2179,7 +2420,6 @@ return;
 
 }
 
-
 if(addr<0x4000){
 
 let bank=
@@ -2195,7 +2435,6 @@ return;
 
 }
 
-
 if(addr<0x6000){
 
 gbCartridge.ramBank=
@@ -2204,7 +2443,6 @@ value&0x03;
 return;
 
 }
-
 
 if(addr<0x8000){
 
@@ -2232,6 +2470,8 @@ addr<=0x9FFF
 gbVRAM[
 addr-0x8000
 ]=value;
+
+gbInvalidateTile(addr);
 
 return;
 
@@ -2337,7 +2577,7 @@ return;
 }
 
 
-/* DIV */
+/* TIMER */
 
 if(addr===0xFF04){
 
@@ -2346,9 +2586,6 @@ gbTimer.div=0;
 return;
 
 }
-
-
-/* TIMER */
 
 if(addr===0xFF05){
 
@@ -2381,6 +2618,34 @@ if(addr===0xFF0F){
 
 gbMemory[0xFF0F]=
 value|0xE0;
+
+return;
+
+}
+
+
+/* APU */
+
+if(
+addr>=0xFF10 &&
+addr<=0xFF26
+){
+
+gbAPUWrite(addr,value);
+
+return;
+
+}
+
+
+/* WAVE RAM */
+
+if(
+addr>=0xFF30 &&
+addr<=0xFF3F
+){
+
+gbMemory[addr]=value;
 
 return;
 
@@ -2424,14 +2689,8 @@ return;
 
 }
 
-
-/* LY is read-only */
-
-if(addr===0xFF44){
-
+if(addr===0xFF44)
 return;
-
-}
 
 if(addr===0xFF45){
 
@@ -2490,8 +2749,6 @@ return;
 }
 
 
-/* IE */
-
 if(addr===0xFFFF){
 
 gbMemory[0xFFFF]=value;
@@ -2500,8 +2757,6 @@ return;
 
 }
 
-
-/* NORMAL MEMORY */
 
 gbMemory[addr]=value;
 
@@ -2526,33 +2781,40 @@ gbTimer.tma=0;
 gbTimer.tac=0;
 gbTimer.counter=0;
 
+
 gbPPU.lcdc=0x91;
 gbPPU.stat=0x85;
+
 gbPPU.scy=0;
 gbPPU.scx=0;
+
 gbPPU.lyc=0;
+
 gbPPU.bgp=0xFC;
 gbPPU.obp0=0xFF;
 gbPPU.obp1=0xFF;
+
 gbPPU.wy=0;
 gbPPU.wx=0;
+
 gbPPU.ly=0;
 gbPPU.cycles=0;
 gbPPU.mode=2;
+
 gbPPU.statIRQLine=false;
 
-   gbPPU.lineSCX.fill(0);
+gbPPU.lineSCX.fill(0);
 gbPPU.lineSCY.fill(0);
 
 gbPPU.lineSCX[0]=gbPPU.scx;
 gbPPU.lineSCY[0]=gbPPU.scy;
 
-/* JOYPAD RESET */
 
 gbJoypad.A=0;
 gbJoypad.B=0;
 gbJoypad.SELECT=0;
 gbJoypad.START=0;
+
 gbJoypad.UP=0;
 gbJoypad.DOWN=0;
 gbJoypad.LEFT=0;
@@ -2562,27 +2824,78 @@ gbJoypad.selectButtons=1;
 gbJoypad.selectDpad=1;
 
 
+gbAPU.active[0]=0;
+gbAPU.active[1]=0;
+gbAPU.active[2]=0;
+gbAPU.active[3]=0;
+
+gbAPU.phase[0]=0;
+gbAPU.phase[1]=0;
+gbAPU.phase[2]=0;
+gbAPU.phase[3]=0;
+
+gbAPU.noisePhase=0;
+gbAPU.noiseLFSR=0x7FFF;
+
+
+/* Game Boy-like power-up sound register values */
+
+gbMemory[0xFF10]=0x80;
+gbMemory[0xFF11]=0xBF;
+gbMemory[0xFF12]=0xF3;
+gbMemory[0xFF13]=0xFF;
+gbMemory[0xFF14]=0xBF;
+
+gbMemory[0xFF16]=0x3F;
+gbMemory[0xFF17]=0x00;
+gbMemory[0xFF18]=0xFF;
+gbMemory[0xFF19]=0xBF;
+
+gbMemory[0xFF1A]=0x7F;
+gbMemory[0xFF1B]=0xFF;
+gbMemory[0xFF1C]=0x9F;
+gbMemory[0xFF1D]=0xFF;
+gbMemory[0xFF1E]=0xBF;
+
+gbMemory[0xFF20]=0xFF;
+gbMemory[0xFF21]=0x00;
+gbMemory[0xFF22]=0x00;
+gbMemory[0xFF23]=0xBF;
+
+gbMemory[0xFF24]=0x77;
+gbMemory[0xFF25]=0xF3;
+gbMemory[0xFF26]=0xF1;
+
+
+/* registers */
+
 gbMemory[0xFF00]=0xCF;
 gbMemory[0xFF0F]=0xE1;
+
 gbMemory[0xFF40]=0x91;
 gbMemory[0xFF41]=0x85;
+
 gbMemory[0xFF47]=0xFC;
 gbMemory[0xFF48]=0xFF;
 gbMemory[0xFF49]=0xFF;
+
 gbMemory[0xFFFF]=0x00;
+
+
+/* Mark every tile dirty after reset */
+
+gbTileDirty.fill(1);
 
 }
 
 
 /* =========================================================
-   GAME BOY CPU
+   CPU
 ========================================================= */
 
 class GBCPU{
 
 constructor(){
-
-this.mem=null;
 
 this.a=0x01;
 this.f=0xB0;
@@ -2615,14 +2928,10 @@ return(
 );
 }
 
-
 set af(v){
 
-this.a=
-(v>>8)&0xFF;
-
-this.f=
-v&0xF0;
+this.a=(v>>8)&0xFF;
+this.f=v&0xF0;
 
 }
 
@@ -2634,14 +2943,10 @@ this.c
 );
 }
 
-
 set bc(v){
 
-this.b=
-(v>>8)&0xFF;
-
-this.c=
-v&0xFF;
+this.b=(v>>8)&0xFF;
+this.c=v&0xFF;
 
 }
 
@@ -2653,14 +2958,10 @@ this.e
 );
 }
 
-
 set de(v){
 
-this.d=
-(v>>8)&0xFF;
-
-this.e=
-v&0xFF;
+this.d=(v>>8)&0xFF;
+this.e=v&0xFF;
 
 }
 
@@ -2672,14 +2973,10 @@ this.l
 );
 }
 
-
 set hl(v){
 
-this.h=
-(v>>8)&0xFF;
-
-this.l=
-v&0xFF;
+this.h=(v>>8)&0xFF;
+this.l=v&0xFF;
 
 }
 
@@ -2741,23 +3038,17 @@ this.f&=~0x10;
 
 
 read(addr){
-
 return gbRead(addr);
-
 }
 
-
 write(addr,value){
-
 gbWrite(addr,value);
-
 }
 
 
 fetch8(){
 
-const v=
-this.read(this.pc);
+const v=this.read(this.pc);
 
 this.pc=
 (this.pc+1)&0xFFFF;
@@ -2843,36 +3134,217 @@ this.imeDelay=0;
 }
 
 
-serviceInterrupts(){
+getR(n){
 
-const ie=
-this.read(0xFFFF);
+switch(n){
 
-const iff=
-this.read(0xFF0F);
+case 0:return this.b;
+case 1:return this.c;
+case 2:return this.d;
+case 3:return this.e;
+case 4:return this.h;
+case 5:return this.l;
+case 6:return this.read(this.hl);
+case 7:return this.a;
 
-const pending=
-ie&iff&0x1F;
+}
 
-
-if(!pending)
 return 0;
-
-
-if(this.halted){
-
-this.halted=false;
 
 }
 
 
+setR(n,v){
+
+v&=0xFF;
+
+switch(n){
+
+case 0:this.b=v;break;
+case 1:this.c=v;break;
+case 2:this.d=v;break;
+case 3:this.e=v;break;
+case 4:this.h=v;break;
+case 5:this.l=v;break;
+case 6:this.write(this.hl,v);break;
+case 7:this.a=v;break;
+
+}
+
+}
+
+
+inc8(v){
+
+const old=v&0xFF;
+
+v=(v+1)&0xFF;
+
+this.Z=v===0;
+this.N=0;
+this.H=((old&0x0F)+1)>0x0F;
+
+return v;
+
+}
+
+
+dec8(v){
+
+const old=v&0xFF;
+
+v=(v-1)&0xFF;
+
+this.Z=v===0;
+this.N=1;
+this.H=(old&0x0F)===0;
+
+return v;
+
+}
+
+
+addA(v){
+
+v&=0xFF;
+
+const a=this.a;
+const result=a+v;
+
+this.a=result&0xFF;
+
+this.Z=this.a===0;
+this.N=0;
+this.H=((a&15)+(v&15))>15;
+this.CARRY=result>255;
+
+}
+
+
+adcA(v){
+
+v&=0xFF;
+
+const carry=this.CARRY?1:0;
+const a=this.a;
+const result=a+v+carry;
+
+this.a=result&0xFF;
+
+this.Z=this.a===0;
+this.N=0;
+this.H=((a&15)+(v&15)+carry)>15;
+this.CARRY=result>255;
+
+}
+
+
+subA(v){
+
+v&=0xFF;
+
+const a=this.a;
+const result=a-v;
+
+this.a=result&0xFF;
+
+this.Z=this.a===0;
+this.N=1;
+this.H=(a&15)<(v&15);
+this.CARRY=a<v;
+
+}
+
+
+sbcA(v){
+
+v&=0xFF;
+
+const carry=this.CARRY?1:0;
+const a=this.a;
+const result=a-v-carry;
+
+this.a=result&0xFF;
+
+this.Z=this.a===0;
+this.N=1;
+this.H=((a&15)-(v&15)-carry)<0;
+this.CARRY=result<0;
+
+}
+
+
+cpA(v){
+
+v&=0xFF;
+
+const a=this.a;
+const result=a-v;
+
+this.Z=(result&0xFF)===0;
+this.N=1;
+this.H=(a&15)<(v&15);
+this.CARRY=a<v;
+
+}
+
+
+xorA(v){
+
+this.a=
+(this.a^(v&0xFF))&0xFF;
+
+this.Z=this.a===0;
+this.N=0;
+this.H=0;
+this.CARRY=0;
+
+}
+
+
+orA(v){
+
+this.a=
+(this.a|(v&0xFF))&0xFF;
+
+this.Z=this.a===0;
+this.N=0;
+this.H=0;
+this.CARRY=0;
+
+}
+
+
+andA(v){
+
+this.a=
+(this.a&(v&0xFF))&0xFF;
+
+this.Z=this.a===0;
+this.N=0;
+this.H=1;
+this.CARRY=0;
+
+}
+
+
+serviceInterrupts(){
+
+const ie=this.read(0xFFFF);
+const iff=this.read(0xFF0F);
+const pending=ie&iff&0x1F;
+
+if(!pending)
+return 0;
+
+if(this.halted)
+this.halted=false;
+
 if(!this.ime)
 return 0;
 
-
 let vector=0;
 let mask=0;
-
 
 if(pending&0x01){
 
@@ -2905,10 +3377,8 @@ mask=0x10;
 
 }
 
-
 if(!vector)
 return 0;
-
 
 this.write(
 0xFF0F,
@@ -2934,10 +3404,8 @@ this.serviceInterrupts();
 if(interruptCycles)
 return interruptCycles;
 
-
 if(this.stopped)
 return 4;
-
 
 if(this.halted)
 return 4;
@@ -2948,203 +3416,7 @@ try{
 const op=this.fetch8();
 
 
-const getR=(n)=>{
-
-switch(n){
-
-case 0:return this.b;
-case 1:return this.c;
-case 2:return this.d;
-case 3:return this.e;
-case 4:return this.h;
-case 5:return this.l;
-case 6:return this.read(this.hl);
-case 7:return this.a;
-
-}
-
-return 0;
-
-};
-
-
-const setR=(n,v)=>{
-
-v&=0xFF;
-
-switch(n){
-
-case 0:this.b=v;break;
-case 1:this.c=v;break;
-case 2:this.d=v;break;
-case 3:this.e=v;break;
-case 4:this.h=v;break;
-case 5:this.l=v;break;
-case 6:this.write(this.hl,v);break;
-case 7:this.a=v;break;
-
-}
-
-};
-
-
-const inc8=(v)=>{
-
-const old=v&0xFF;
-
-v=(v+1)&0xFF;
-
-this.Z=v===0;
-this.N=0;
-this.H=((old&0x0F)+1)>0x0F;
-
-return v;
-
-};
-
-
-const dec8=(v)=>{
-
-const old=v&0xFF;
-
-v=(v-1)&0xFF;
-
-this.Z=v===0;
-this.N=1;
-this.H=(old&0x0F)===0;
-
-return v;
-
-};
-
-
-const addA=(v)=>{
-
-v&=0xFF;
-
-const a=this.a;
-const result=a+v;
-
-this.a=result&0xFF;
-
-this.Z=this.a===0;
-this.N=0;
-this.H=((a&15)+(v&15))>15;
-this.CARRY=result>255;
-
-};
-
-
-const adcA=(v)=>{
-
-v&=0xFF;
-
-const carry=this.CARRY?1:0;
-const a=this.a;
-const result=a+v+carry;
-
-this.a=result&0xFF;
-
-this.Z=this.a===0;
-this.N=0;
-this.H=((a&15)+(v&15)+carry)>15;
-this.CARRY=result>255;
-
-};
-
-
-const subA=(v)=>{
-
-v&=0xFF;
-
-const a=this.a;
-const result=a-v;
-
-this.a=result&0xFF;
-
-this.Z=this.a===0;
-this.N=1;
-this.H=(a&15)<(v&15);
-this.CARRY=a<v;
-
-};
-
-
-const sbcA=(v)=>{
-
-v&=0xFF;
-
-const carry=this.CARRY?1:0;
-const a=this.a;
-const result=a-v-carry;
-
-this.a=result&0xFF;
-
-this.Z=this.a===0;
-this.N=1;
-this.H=((a&15)-(v&15)-carry)<0;
-this.CARRY=result<0;
-
-};
-
-
-const cpA=(v)=>{
-
-v&=0xFF;
-
-const a=this.a;
-const result=a-v;
-
-this.Z=(result&0xFF)===0;
-this.N=1;
-this.H=(a&15)<(v&15);
-this.CARRY=a<v;
-
-};
-
-
-const xorA=(v)=>{
-
-this.a=
-(this.a^(v&0xFF))&0xFF;
-
-this.Z=this.a===0;
-this.N=0;
-this.H=0;
-this.CARRY=0;
-
-};
-
-
-const orA=(v)=>{
-
-this.a=
-(this.a|(v&0xFF))&0xFF;
-
-this.Z=this.a===0;
-this.N=0;
-this.H=0;
-this.CARRY=0;
-
-};
-
-
-const andA=(v)=>{
-
-this.a=
-(this.a&(v&0xFF))&0xFF;
-
-this.Z=this.a===0;
-this.N=0;
-this.H=1;
-this.CARRY=0;
-
-};
-
-
-/* =========================================================
-   LD r,r
-========================================================= */
+/* LD r,r */
 
 if(
 op>=0x40 &&
@@ -3162,9 +3434,9 @@ return 4;
 const dst=(op>>3)&7;
 const src=op&7;
 
-setR(
+this.setR(
 dst,
-getR(src)
+this.getR(src)
 );
 
 return(
@@ -3179,9 +3451,7 @@ src===6
 }
 
 
-/* =========================================================
-   ALU A,r
-========================================================= */
+/* ALU A,r */
 
 if(
 op>=0x80 &&
@@ -3189,57 +3459,31 @@ op<=0xBF
 ){
 
 const r=op&7;
-const v=getR(r);
+const v=this.getR(r);
 
-if(op<0x88){
+if(op<0x88)
+this.addA(v);
+else if(op<0x90)
+this.adcA(v);
+else if(op<0x98)
+this.subA(v);
+else if(op<0xA0)
+this.sbcA(v);
+else if(op<0xA8)
+this.andA(v);
+else if(op<0xB0)
+this.xorA(v);
+else if(op<0xB8)
+this.orA(v);
+else
+this.cpA(v);
 
-addA(v);
-
-}
-else if(op<0x90){
-
-adcA(v);
-
-}
-else if(op<0x98){
-
-subA(v);
-
-}
-else if(op<0xA0){
-
-sbcA(v);
-
-}
-else if(op<0xA8){
-
-andA(v);
-
-}
-else if(op<0xB0){
-
-xorA(v);
-
-}
-else if(op<0xB8){
-
-orA(v);
-
-}
-else{
-
-cpA(v);
-
-}
-
-return r===6 ? 8 : 4;
+return r===6?8:4;
 
 }
 
 
-/* =========================================================
-   INC / DEC r
-========================================================= */
+/* INC */
 
 if(
 (op&0xC7)===0x04
@@ -3247,15 +3491,17 @@ if(
 
 const r=(op>>3)&7;
 
-setR(
+this.setR(
 r,
-inc8(getR(r))
+this.inc8(this.getR(r))
 );
 
-return r===6 ? 12 : 4;
+return r===6?12:4;
 
 }
 
+
+/* DEC */
 
 if(
 (op&0xC7)===0x05
@@ -3263,25 +3509,20 @@ if(
 
 const r=(op>>3)&7;
 
-setR(
+this.setR(
 r,
-dec8(getR(r))
+this.dec8(this.getR(r))
 );
 
-return r===6 ? 12 : 4;
+return r===6?12:4;
 
 }
 
-
-/* =========================================================
-   OPCODES
-========================================================= */
 
 switch(op){
 
 case 0x00:
 return 4;
-
 
 case 0x10:
 
@@ -3291,7 +3532,7 @@ this.stopped=true;
 return 4;
 
 
-/* 16-bit loads */
+/* 16 bit */
 
 case 0x01:
 this.bc=this.fetch16();
@@ -3310,8 +3551,6 @@ this.sp=this.fetch16();
 return 12;
 
 
-/* 16-bit INC */
-
 case 0x03:
 this.bc=(this.bc+1)&0xFFFF;
 return 8;
@@ -3328,8 +3567,6 @@ case 0x33:
 this.sp=(this.sp+1)&0xFFFF;
 return 8;
 
-
-/* 16-bit DEC */
 
 case 0x0B:
 this.bc=(this.bc-1)&0xFFFF;
@@ -3388,46 +3625,31 @@ this.a=this.fetch8();
 return 8;
 
 
-/* Memory loads */
+/* memory */
 
 case 0x02:
 
-this.write(
-this.bc,
-this.a
-);
-
+this.write(this.bc,this.a);
 return 8;
 
 case 0x12:
 
-this.write(
-this.de,
-this.a
-);
-
+this.write(this.de,this.a);
 return 8;
 
 case 0x0A:
 
-this.a=
-this.read(this.bc);
-
+this.a=this.read(this.bc);
 return 8;
 
 case 0x1A:
 
-this.a=
-this.read(this.de);
-
+this.a=this.read(this.de);
 return 8;
 
 case 0x22:
 
-this.write(
-this.hl,
-this.a
-);
+this.write(this.hl,this.a);
 
 this.hl=
 (this.hl+1)&0xFFFF;
@@ -3436,10 +3658,7 @@ return 8;
 
 case 0x32:
 
-this.write(
-this.hl,
-this.a
-);
+this.write(this.hl,this.a);
 
 this.hl=
 (this.hl-1)&0xFFFF;
@@ -3448,8 +3667,7 @@ return 8;
 
 case 0x2A:
 
-this.a=
-this.read(this.hl);
+this.a=this.read(this.hl);
 
 this.hl=
 (this.hl+1)&0xFFFF;
@@ -3458,8 +3676,7 @@ return 8;
 
 case 0x3A:
 
-this.a=
-this.read(this.hl);
+this.a=this.read(this.hl);
 
 this.hl=
 (this.hl-1)&0xFFFF;
@@ -3476,8 +3693,7 @@ const v=this.bc;
 const result=old+v;
 
 this.N=0;
-this.H=
-((old&0xFFF)+(v&0xFFF))>0xFFF;
+this.H=((old&0xFFF)+(v&0xFFF))>0xFFF;
 this.CARRY=result>0xFFFF;
 
 this.hl=result&0xFFFF;
@@ -3493,8 +3709,7 @@ const v=this.de;
 const result=old+v;
 
 this.N=0;
-this.H=
-((old&0xFFF)+(v&0xFFF))>0xFFF;
+this.H=((old&0xFFF)+(v&0xFFF))>0xFFF;
 this.CARRY=result>0xFFFF;
 
 this.hl=result&0xFFFF;
@@ -3510,8 +3725,7 @@ const v=this.hl;
 const result=old+v;
 
 this.N=0;
-this.H=
-((old&0xFFF)+(v&0xFFF))>0xFFF;
+this.H=((old&0xFFF)+(v&0xFFF))>0xFFF;
 this.CARRY=result>0xFFFF;
 
 this.hl=result&0xFFFF;
@@ -3527,8 +3741,7 @@ const v=this.sp;
 const result=old+v;
 
 this.N=0;
-this.H=
-((old&0xFFF)+(v&0xFFF))>0xFFF;
+this.H=((old&0xFFF)+(v&0xFFF))>0xFFF;
 this.CARRY=result>0xFFFF;
 
 this.hl=result&0xFFFF;
@@ -3547,10 +3760,10 @@ let correction=0;
 
 if(!this.N){
 
-if(this.H || (a&0x0F)>9)
-correction|=0x06;
+if(this.H||(a&15)>9)
+correction|=6;
 
-if(this.CARRY || a>0x99){
+if(this.CARRY||a>0x99){
 
 correction|=0x60;
 this.CARRY=1;
@@ -3563,7 +3776,7 @@ a=(a+correction)&0xFF;
 else{
 
 if(this.H)
-correction|=0x06;
+correction|=6;
 
 if(this.CARRY)
 correction|=0x60;
@@ -3581,7 +3794,7 @@ return 4;
 }
 
 
-/* ROTATES */
+/* ROTATE A */
 
 case 0x07:{
 
@@ -3601,7 +3814,6 @@ return 4;
 
 }
 
-
 case 0x0F:{
 
 const carry=
@@ -3619,7 +3831,6 @@ this.CARRY=carry;
 return 4;
 
 }
-
 
 case 0x17:{
 
@@ -3641,7 +3852,6 @@ this.CARRY=newCarry;
 return 4;
 
 }
-
 
 case 0x1F:{
 
@@ -3665,18 +3875,16 @@ return 4;
 }
 
 
-/* CPL / SCF / CCF */
+/* CPL SCF CCF */
 
 case 0x2F:
 
-this.a=
-(~this.a)&0xFF;
+this.a=(~this.a)&0xFF;
 
 this.N=1;
 this.H=1;
 
 return 4;
-
 
 case 0x37:
 
@@ -3685,7 +3893,6 @@ this.H=0;
 this.CARRY=1;
 
 return 4;
-
 
 case 0x3F:
 
@@ -3696,42 +3903,39 @@ this.CARRY=!this.CARRY;
 return 4;
 
 
-/* ALU immediate */
+/* immediate ALU */
 
 case 0xC6:
-addA(this.fetch8());
+this.addA(this.fetch8());
 return 8;
 
 case 0xCE:
-adcA(this.fetch8());
+this.adcA(this.fetch8());
 return 8;
 
 case 0xD6:
-subA(this.fetch8());
+this.subA(this.fetch8());
 return 8;
 
 case 0xDE:
-sbcA(this.fetch8());
+this.sbcA(this.fetch8());
 return 8;
 
 case 0xE6:
-andA(this.fetch8());
+this.andA(this.fetch8());
 return 8;
 
 case 0xEE:
-xorA(this.fetch8());
+this.xorA(this.fetch8());
 return 8;
 
 case 0xF6:
-orA(this.fetch8());
+this.orA(this.fetch8());
 return 8;
 
 case 0xFE:
-cpA(this.fetch8());
+this.cpA(this.fetch8());
 return 8;
-
-
-/* XOR A */
 
 case 0xAF:
 
@@ -3749,18 +3953,13 @@ return 4;
 
 case 0xC3:
 
-this.pc=
-this.fetch16();
+this.pc=this.fetch16();
 
 return 16;
 
-
-/* JP NZ */
-
 case 0xC2:{
 
-const addr=
-this.fetch16();
+const addr=this.fetch16();
 
 if(!this.Z){
 
@@ -3774,13 +3973,9 @@ return 12;
 
 }
 
-
-/* JP Z */
-
 case 0xCA:{
 
-const addr=
-this.fetch16();
+const addr=this.fetch16();
 
 if(this.Z){
 
@@ -3794,13 +3989,9 @@ return 12;
 
 }
 
-
-/* JP NC */
-
 case 0xD2:{
 
-const addr=
-this.fetch16();
+const addr=this.fetch16();
 
 if(!this.CARRY){
 
@@ -3814,13 +4005,9 @@ return 12;
 
 }
 
-
-/* JP C */
-
 case 0xDA:{
 
-const addr=
-this.fetch16();
+const addr=this.fetch16();
 
 if(this.CARRY){
 
@@ -3833,9 +4020,6 @@ return 16;
 return 12;
 
 }
-
-
-/* JP HL */
 
 case 0xE9:
 
@@ -3851,11 +4035,7 @@ case 0x18:{
 const off=this.fetch8();
 
 const signed=
-off<128
-?
-off
-:
-off-256;
+off<128?off:off-256;
 
 this.pc=
 (this.pc+signed)&0xFFFF;
@@ -3863,9 +4043,6 @@ this.pc=
 return 12;
 
 }
-
-
-/* JR NZ */
 
 case 0x20:{
 
@@ -3874,11 +4051,7 @@ const off=this.fetch8();
 if(!this.Z){
 
 const signed=
-off<128
-?
-off
-:
-off-256;
+off<128?off:off-256;
 
 this.pc=
 (this.pc+signed)&0xFFFF;
@@ -3890,9 +4063,6 @@ return 12;
 return 8;
 
 }
-
-
-/* JR Z */
 
 case 0x28:{
 
@@ -3901,11 +4071,7 @@ const off=this.fetch8();
 if(this.Z){
 
 const signed=
-off<128
-?
-off
-:
-off-256;
+off<128?off:off-256;
 
 this.pc=
 (this.pc+signed)&0xFFFF;
@@ -3917,9 +4083,6 @@ return 12;
 return 8;
 
 }
-
-
-/* JR NC */
 
 case 0x30:{
 
@@ -3928,11 +4091,7 @@ const off=this.fetch8();
 if(!this.CARRY){
 
 const signed=
-off<128
-?
-off
-:
-off-256;
+off<128?off:off-256;
 
 this.pc=
 (this.pc+signed)&0xFFFF;
@@ -3945,9 +4104,6 @@ return 8;
 
 }
 
-
-/* JR C */
-
 case 0x38:{
 
 const off=this.fetch8();
@@ -3955,11 +4111,7 @@ const off=this.fetch8();
 if(this.CARRY){
 
 const signed=
-off<128
-?
-off
-:
-off-256;
+off<128?off:off-256;
 
 this.pc=
 (this.pc+signed)&0xFFFF;
@@ -3977,19 +4129,14 @@ return 8;
 
 case 0xCD:{
 
-const addr=
-this.fetch16();
+const addr=this.fetch16();
 
 this.push16(this.pc);
-
 this.pc=addr;
 
 return 24;
 
 }
-
-
-/* Conditional CALL */
 
 case 0xC4:{
 
@@ -4008,7 +4155,6 @@ return 12;
 
 }
 
-
 case 0xCC:{
 
 const addr=this.fetch16();
@@ -4026,7 +4172,6 @@ return 12;
 
 }
 
-
 case 0xD4:{
 
 const addr=this.fetch16();
@@ -4043,7 +4188,6 @@ return 24;
 return 12;
 
 }
-
 
 case 0xDC:{
 
@@ -4067,62 +4211,51 @@ return 12;
 
 case 0xC9:
 
-this.pc=
-this.pop16();
+this.pc=this.pop16();
 
 return 16;
-
-
-/* Conditional RET */
 
 case 0xC0:
 
 if(!this.Z){
 
-this.pc=
-this.pop16();
+this.pc=this.pop16();
 
 return 20;
 
 }
 
 return 8;
-
 
 case 0xC8:
 
 if(this.Z){
 
-this.pc=
-this.pop16();
+this.pc=this.pop16();
 
 return 20;
 
 }
 
 return 8;
-
 
 case 0xD0:
 
 if(!this.CARRY){
 
-this.pc=
-this.pop16();
+this.pc=this.pop16();
 
 return 20;
 
 }
 
 return 8;
-
 
 case 0xD8:
 
 if(this.CARRY){
 
-this.pc=
-this.pop16();
+this.pc=this.pop16();
 
 return 20;
 
@@ -4131,12 +4264,9 @@ return 20;
 return 8;
 
 
-/* RETI */
-
 case 0xD9:
 
-this.pc=
-this.pop16();
+this.pc=this.pop16();
 
 this.ime=true;
 
@@ -4204,8 +4334,7 @@ return 4;
 
 case 0x08:{
 
-const addr=
-this.fetch16();
+const addr=this.fetch16();
 
 this.write(
 addr,
@@ -4235,15 +4364,10 @@ return 8;
 
 case 0xE8:{
 
-const value=
-this.fetch8();
+const value=this.fetch8();
 
 const signed=
-value<128
-?
-value
-:
-value-256;
+value<128?value:value-256;
 
 const sp=this.sp;
 
@@ -4251,10 +4375,10 @@ this.Z=0;
 this.N=0;
 
 this.H=
-((sp&0x0F)+(value&0x0F))>0x0F;
+((sp&15)+(value&15))>15;
 
 this.CARRY=
-((sp&0xFF)+(value&0xFF))>0xFF;
+((sp&255)+(value&255))>255;
 
 this.sp=
 (sp+signed)&0xFFFF;
@@ -4268,15 +4392,10 @@ return 16;
 
 case 0xF8:{
 
-const value=
-this.fetch8();
+const value=this.fetch8();
 
 const signed=
-value<128
-?
-value
-:
-value-256;
+value<128?value:value-256;
 
 const sp=this.sp;
 
@@ -4284,10 +4403,10 @@ this.Z=0;
 this.N=0;
 
 this.H=
-((sp&0x0F)+(value&0x0F))>0x0F;
+((sp&15)+(value&15))>15;
 
 this.CARRY=
-((sp&0xFF)+(value&0xFF))>0xFF;
+((sp&255)+(value&255))>255;
 
 this.hl=
 (sp+signed)&0xFFFF;
@@ -4314,19 +4433,16 @@ return 8;
 case 0xF2:
 
 this.a=
-this.read(
-0xFF00+this.c
-);
+this.read(0xFF00+this.c);
 
 return 8;
 
 
-/* LD (FF00+n),A */
+/* LDH */
 
 case 0xE0:{
 
-const n=
-this.fetch8();
+const n=this.fetch8();
 
 this.write(
 0xFF00+n,
@@ -4337,18 +4453,12 @@ return 12;
 
 }
 
-
-/* LD A,(FF00+n) */
-
 case 0xF0:{
 
-const n=
-this.fetch8();
+const n=this.fetch8();
 
 this.a=
-this.read(
-0xFF00+n
-);
+this.read(0xFF00+n);
 
 return 12;
 
@@ -4359,8 +4469,7 @@ return 12;
 
 case 0xEA:{
 
-const addr=
-this.fetch16();
+const addr=this.fetch16();
 
 this.write(
 addr,
@@ -4376,8 +4485,7 @@ return 16;
 
 case 0xFA:{
 
-const addr=
-this.fetch16();
+const addr=this.fetch16();
 
 this.a=
 this.read(addr);
@@ -4400,18 +4508,15 @@ return 4;
 
 case 0xCB:{
 
-const cb=
-this.fetch8();
+const cb=this.fetch8();
 
 const r=cb&7;
 const group=cb>>6;
 const bit=(cb>>3)&7;
 
 let value=
-getR(r);
+this.getR(r);
 
-
-/* ROTATE / SHIFT */
 
 if(group===0){
 
@@ -4421,13 +4526,11 @@ const operation=
 let result=0;
 let carry=0;
 
-
 switch(operation){
 
 case 0:
 
-carry=
-(value&0x80)!==0;
+carry=(value&0x80)!==0;
 
 result=
 ((value<<1)&0xFF)|
@@ -4435,11 +4538,9 @@ result=
 
 break;
 
-
 case 1:
 
-carry=
-(value&1)!==0;
+carry=(value&1)!==0;
 
 result=
 (value>>1)|
@@ -4447,14 +4548,12 @@ result=
 
 break;
 
-
 case 2:{
 
 const oldCarry=
 this.CARRY?1:0;
 
-carry=
-(value&0x80)!==0;
+carry=(value&0x80)!==0;
 
 result=
 ((value<<1)&0xFF)|
@@ -4464,14 +4563,12 @@ break;
 
 }
 
-
 case 3:{
 
 const oldCarry=
 this.CARRY?1:0;
 
-carry=
-(value&1)!==0;
+carry=(value&1)!==0;
 
 result=
 (value>>1)|
@@ -4481,29 +4578,24 @@ break;
 
 }
 
-
 case 4:
 
-carry=
-(value&0x80)!==0;
+carry=(value&0x80)!==0;
 
 result=
 (value<<1)&0xFF;
 
 break;
 
-
 case 5:
 
-carry=
-(value&1)!==0;
+carry=(value&1)!==0;
 
 result=
 (value>>1)|
 (value&0x80);
 
 break;
-
 
 case 6:
 
@@ -4515,33 +4607,27 @@ carry=0;
 
 break;
 
-
 case 7:
 
-carry=
-(value&1)!==0;
+carry=(value&1)!==0;
 
-result=
-value>>1;
+result=value>>1;
 
 break;
 
 }
 
-
-setR(r,result);
+this.setR(r,result);
 
 this.Z=result===0;
 this.N=0;
 this.H=0;
 this.CARRY=carry;
 
-return r===6 ? 16 : 8;
+return r===6?16:8;
 
 }
 
-
-/* BIT */
 
 if(group===1){
 
@@ -4551,38 +4637,33 @@ this.Z=
 this.N=0;
 this.H=1;
 
-return r===6 ? 12 : 8;
+return r===6?12:8;
 
 }
 
-
-/* RES */
 
 if(group===2){
 
 value&=
 ~(1<<bit);
 
-setR(r,value);
+this.setR(r,value);
 
-return r===6 ? 16 : 8;
+return r===6?16:8;
 
 }
 
-
-/* SET */
 
 if(group===3){
 
 value|=
 (1<<bit);
 
-setR(r,value);
+this.setR(r,value);
 
-return r===6 ? 16 : 8;
+return r===6?16:8;
 
 }
-
 
 return 8;
 
@@ -4592,47 +4673,63 @@ return 8;
 /* RST */
 
 case 0xC7:
+
 this.push16(this.pc);
 this.pc=0x00;
+
 return 16;
 
 case 0xCF:
+
 this.push16(this.pc);
 this.pc=0x08;
+
 return 16;
 
 case 0xD7:
+
 this.push16(this.pc);
 this.pc=0x10;
+
 return 16;
 
 case 0xDF:
+
 this.push16(this.pc);
 this.pc=0x18;
+
 return 16;
 
 case 0xE7:
+
 this.push16(this.pc);
 this.pc=0x20;
+
 return 16;
 
 case 0xEF:
+
 this.push16(this.pc);
 this.pc=0x28;
+
 return 16;
 
 case 0xF7:
+
 this.push16(this.pc);
 this.pc=0x30;
+
 return 16;
 
 case 0xFF:
+
 this.push16(this.pc);
 this.pc=0x38;
+
 return 16;
 
 
-/* Illegal opcodes */
+/* Illegal */
 
 case 0xD3:
 case 0xDB:
@@ -4649,8 +4746,6 @@ case 0xFD:
 return 4;
 
 
-/* Unknown */
-
 default:
 
 console.warn(
@@ -4666,15 +4761,13 @@ return 4;
 }
 
 }
-
 finally{
 
 if(this.imeDelay){
 
 this.imeDelay--;
 
-if(this.imeDelay===0){
-
+if(this.imeDelay===0)
 this.ime=true;
 
 }
@@ -4685,11 +4778,9 @@ this.ime=true;
 
 }
 
-}
-
 
 /* =========================================================
-   GAME BOY CPU
+   CPU INSTANCE
 ========================================================= */
 
 const gbCPU=
@@ -4697,7 +4788,7 @@ new GBCPU();
 
 
 /* =========================================================
-   RESET GAME BOY
+   GB RESET
 ========================================================= */
 
 function gbReset(){
@@ -4715,7 +4806,7 @@ gbCPU.reset();
 
 
 /* =========================================================
-   PPU STAT
+   STAT
 ========================================================= */
 
 function gbUpdateSTAT(){
@@ -4727,31 +4818,20 @@ gbPPU.mode=0;
 }
 else{
 
-if(gbPPU.ly>=144){
-
+if(gbPPU.ly>=144)
 gbPPU.mode=1;
 
-}
-else if(gbPPU.cycles<80){
-
+else if(gbPPU.cycles<80)
 gbPPU.mode=2;
 
-}
-else if(gbPPU.cycles<252){
-
+else if(gbPPU.cycles<252)
 gbPPU.mode=3;
 
-}
-else{
-
+else
 gbPPU.mode=0;
 
 }
 
-}
-
-
-/* STAT register */
 
 let stat=
 gbPPU.stat&0x78;
@@ -4762,29 +4842,17 @@ gbPPU.mode;
 const coincidence=
 gbPPU.ly===gbPPU.lyc;
 
-if(coincidence){
-
+if(coincidence)
 stat|=0x04;
 
-}
-
-
-/*
-   LCD STAT interrupt sources.
-
-   Bit 6 = LY=LYC
-   Bit 5 = Mode 2
-   Bit 4 = Mode 1
-   Bit 3 = Mode 0
-*/
 
 let statIRQ=false;
 
 if(
-(coincidence && (gbPPU.stat&0x40)) ||
-(gbPPU.mode===2 && (gbPPU.stat&0x20)) ||
-(gbPPU.mode===1 && (gbPPU.stat&0x10)) ||
-(gbPPU.mode===0 && (gbPPU.stat&0x08))
+(coincidence&&(gbPPU.stat&0x40)) ||
+(gbPPU.mode===2&&(gbPPU.stat&0x20)) ||
+(gbPPU.mode===1&&(gbPPU.stat&0x10)) ||
+(gbPPU.mode===0&&(gbPPU.stat&0x08))
 ){
 
 statIRQ=true;
@@ -4792,12 +4860,10 @@ statIRQ=true;
 }
 
 
-/*
-   STAT interrupts trigger on a rising edge
-   of the selected interrupt condition.
-*/
-
-if(statIRQ && !gbPPU.statIRQLine){
+if(
+statIRQ &&
+!gbPPU.statIRQLine
+){
 
 gbMemory[0xFF0F]|=0x02;
 
@@ -4810,6 +4876,7 @@ stat|0x80;
 
 }
 
+
 /* =========================================================
    PPU STEP
 ========================================================= */
@@ -4819,9 +4886,7 @@ function gbPPUStep(cycles){
 if(!(gbPPU.lcdc&0x80))
 return;
 
-
 gbPPU.cycles+=cycles;
-
 
 while(gbPPU.cycles>=456){
 
@@ -4829,23 +4894,8 @@ gbPPU.cycles-=456;
 
 gbPPU.ly++;
 
-
-/* Start of VBlank */
-if(gbPPU.ly===144){
-
+if(gbPPU.ly===144)
 gbMemory[0xFF0F]|=0x01;
-
-}
-
-
-/*
-   Capture scrolling for the new scanline.
-
-   The renderer will later use the SCX/SCY
-   that belongs to each individual line
-   instead of using the final values for
-   the entire frame.
-*/
 
 if(gbPPU.ly<144){
 
@@ -4854,8 +4904,6 @@ gbPPU.lineSCY[gbPPU.ly]=gbPPU.scy;
 
 }
 
-
-/* New frame */
 if(gbPPU.ly>=154){
 
 gbPPU.ly=0;
@@ -4867,155 +4915,144 @@ gbPPU.lineSCY[0]=gbPPU.scy;
 
 }
 
-
 gbUpdateSTAT();
 
 }
 
-/* =========================================================
-   PPU PALETTE
-========================================================= */
-
-function gbPaletteShade(palette,color){
-
-return(
-palette>>
-(color*2)
-)&3;
-
-}
-
 
 /* =========================================================
-   PPU DRAW
+   FAST TILE ACCESS
 ========================================================= */
 
-   const gbPalette=[
-255,
-192,
-96,
-0
-];
-   
-function gbPPUDrawBackground(){
+function gbGetTileIndex(tileIndex,signedMode){
 
-const ctx=gbCtx;
+if(!signedMode)
+return tileIndex;
 
-const image=gbImage;
-const palette=gbPalette;
-
-const bgColorIndex=gbBGColorIndex;
-
-
-/* BACKGROUND */
-
-for(let y=0;y<144;y++){
-
-for(let screenX=0;screenX<160;screenX++){
-
-let color=0;
-
-
-if(gbPPU.lcdc&0x01){
-
-const worldX=
-(screenX+gbPPU.lineSCX[y])&255;
-
-const worldY=
-(y+gbPPU.lineSCY[y])&255;
-
-const tileX=
-worldX>>3;
-
-const tileY=
-worldY>>3;
-
-const mapBase=
-(gbPPU.lcdc&0x08)
-?
-0x9C00
-:
-0x9800;
-
-const mapAddress=
-mapBase+
-tileY*32+
-tileX;
-
-const tileIndex=
-gbVRAM[mapAddress-0x8000];
-
-let tileAddress;
-
-if(gbPPU.lcdc&0x10){
-
-tileAddress=
-0x8000+
-tileIndex*16;
-
-}
-else{
-
-const signedTile=
+const signed=
 tileIndex<128
 ?
 tileIndex
 :
 tileIndex-256;
 
-tileAddress=
-0x9000+
-signedTile*16;
+return 256+signed;
 
 }
 
+
+function gbGetTilePixel(tile,row,col){
+
+gbDecodeTile(tile);
+
+return gbTileCache[
+tile*64+
+row*8+
+col
+];
+
+}
+
+
+/* =========================================================
+   FAST PPU DRAW
+========================================================= */
+
+function gbPPUDrawBackground(){
+
+const image=
+gbImage.data;
+
+const bg=
+gbBGColorIndex;
+
+const lcdc=
+gbPPU.lcdc;
+
+const bgp=
+gbPPU.bgp;
+
+const signedMode=
+!(lcdc&0x10);
+
+const bgMapBase=
+(lcdc&0x08)
+?
+0x9C00
+:
+0x9800;
+
+
+/* BACKGROUND */
+
+for(let y=0;y<144;y++){
+
+const scx=
+gbPPU.lineSCX[y];
+
+const scy=
+gbPPU.lineSCY[y];
+
+const worldY=
+(y+scy)&255;
+
+const tileY=
+worldY>>3;
 
 const row=
 worldY&7;
 
-const low=
+const mapRow=
+tileY*32;
+
+const basePixel=
+y*160;
+
+for(let screenX=0;screenX<160;screenX++){
+
+const worldX=
+(screenX+scx)&255;
+
+const tileX=
+worldX>>3;
+
+const tileIndex=
 gbVRAM[
-tileAddress+
-row*2-
-0x8000
+(bgMapBase-0x8000)+
+mapRow+
+tileX
 ];
 
-const high=
-gbVRAM[
-tileAddress+
-row*2+1-
-0x8000
-];
+const tile=
+gbGetTileIndex(
+tileIndex,
+signedMode
+);
 
-const bit=
-7-(worldX&7);
+const color=
+gbGetTilePixel(
+tile,
+row,
+worldX&7
+);
 
-color=
-((high>>bit)&1)*2+
-((low>>bit)&1);
+const pixel=
+basePixel+screenX;
 
-}
-
-
-bgColorIndex[
-y*160+screenX
-]=color;
+bg[pixel]=color;
 
 const shade=
-palette[
-gbPaletteShade(
-gbPPU.bgp,
-color
-)
+gbShadeTable[
+bgp*4+color
 ];
 
 const i=
-(y*160+screenX)*4;
+pixel*4;
 
-image.data[i]=shade;
-image.data[i+1]=shade;
-image.data[i+2]=shade;
-image.data[i+3]=255;
+image[i]=shade;
+image[i+1]=shade;
+image[i+2]=shade;
+image[i+3]=255;
 
 }
 
@@ -5024,12 +5061,19 @@ image.data[i+3]=255;
 
 /* WINDOW */
 
-if(gbPPU.lcdc&0x20){
+if(lcdc&0x20){
 
 const wy=gbPPU.wy;
 const wx=gbPPU.wx-7;
 
 if(wy<144){
+
+const windowMap=
+(lcdc&0x40)
+?
+0x9C00
+:
+0x9800;
 
 for(let y=Math.max(0,wy);y<144;y++){
 
@@ -5038,6 +5082,9 @@ y-wy;
 
 const tileY=
 windowY>>3;
+
+const row=
+windowY&7;
 
 for(
 let screenX=Math.max(0,wx);
@@ -5057,88 +5104,43 @@ windowX>>3;
 if(tileX>=32)
 continue;
 
-const mapBase=
-(gbPPU.lcdc&0x40)
-?
-0x9C00
-:
-0x9800;
-
 const tileIndex=
 gbVRAM[
-mapBase+
+(windowMap-0x8000)+
 tileY*32+
-tileX-
-0x8000
+tileX
 ];
 
-let tileAddress;
-
-if(gbPPU.lcdc&0x10){
-
-tileAddress=
-0x8000+
-tileIndex*16;
-
-}
-else{
-
-const signedTile=
-tileIndex<128
-?
-tileIndex
-:
-tileIndex-256;
-
-tileAddress=
-0x9000+
-signedTile*16;
-
-}
-
-const row=
-windowY&7;
-
-const low=
-gbVRAM[
-tileAddress+
-row*2-
-0x8000
-];
-
-const high=
-gbVRAM[
-tileAddress+
-row*2+1-
-0x8000
-];
-
-const bit=
-7-(windowX&7);
+const tile=
+gbGetTileIndex(
+tileIndex,
+signedMode
+);
 
 const color=
-((high>>bit)&1)*2+
-((low>>bit)&1);
+gbGetTilePixel(
+tile,
+row,
+windowX&7
+);
 
-bgColorIndex[
-y*160+screenX
-]=color;
+const pixel=
+y*160+screenX;
+
+bg[pixel]=color;
 
 const shade=
-palette[
-gbPaletteShade(
-gbPPU.bgp,
-color
-)
+gbShadeTable[
+bgp*4+color
 ];
 
 const i=
-(y*160+screenX)*4;
+pixel*4;
 
-image.data[i]=shade;
-image.data[i+1]=shade;
-image.data[i+2]=shade;
-image.data[i+3]=255;
+image[i]=shade;
+image[i+1]=shade;
+image[i+2]=shade;
+image[i+3]=255;
 
 }
 
@@ -5151,20 +5153,18 @@ image.data[i+3]=255;
 
 /* SPRITES */
 
-if(gbPPU.lcdc&0x02){
+if(lcdc&0x02){
 
 const spriteHeight=
-(gbPPU.lcdc&0x04)
+(lcdc&0x04)
 ?
 16
 :
 8;
 
-
 for(let sprite=0;sprite<40;sprite++){
 
-const base=
-sprite*4;
+const base=sprite*4;
 
 const sy=
 gbOAM[base]-16;
@@ -5194,7 +5194,6 @@ gbPPU.obp1
 :
 gbPPU.obp0;
 
-
 if(spriteHeight===16)
 tile&=0xFE;
 
@@ -5208,8 +5207,7 @@ spriteHeight-1-py
 :
 py;
 
-let tileNumber=
-tile;
+let tileNumber=tile;
 
 if(spriteHeight===16){
 
@@ -5225,17 +5223,6 @@ actualY-=8;
 }
 
 
-const tileOffset=
-tileNumber*16+
-actualY*2;
-
-const low=
-gbVRAM[tileOffset];
-
-const high=
-gbVRAM[tileOffset+1];
-
-
 for(let px=0;px<8;px++){
 
 const actualX=
@@ -5246,19 +5233,20 @@ px
 7-px;
 
 const color=
-((high>>actualX)&1)*2+
-((low>>actualX)&1);
+gbGetTilePixel(
+tileNumber,
+actualY,
+actualX
+);
 
 if(color===0)
 continue;
-
 
 const screenX=
 sx+px;
 
 const screenY=
 sy+py;
-
 
 if(
 screenX<0 ||
@@ -5268,31 +5256,26 @@ screenY>=144
 )
 continue;
 
-
 if(
 behindBG &&
-bgColorIndex[
+bg[
 screenY*160+screenX
 ]!==0
 )
 continue;
 
-
 const shade=
-palette[
-gbPaletteShade(
-spritePalette,
-color
-)
+gbShadeTable[
+spritePalette*4+color
 ];
 
 const i=
 (screenY*160+screenX)*4;
 
-image.data[i]=shade;
-image.data[i+1]=shade;
-image.data[i+2]=shade;
-image.data[i+3]=255;
+image[i]=shade;
+image[i+1]=shade;
+image[i+2]=shade;
+image[i+3]=255;
 
 }
 
@@ -5303,8 +5286,8 @@ image.data[i+3]=255;
 }
 
 
-ctx.putImageData(
-image,
+gbCtx.putImageData(
+gbImage,
 0,
 0
 );
@@ -5312,46 +5295,6 @@ image,
 }
 
 
-/* =========================================================
-   GAME BOY FRAME
-========================================================= */
-
-const GB_CYCLES_PER_FRAME=70224;
-
-function gbRunFrame(){
-
-if(!gbROMLoaded)
-return;
-
-let cycles=0;
-
-while(cycles<GB_CYCLES_PER_FRAME){
-
-const used=
-gbCPU.step();
-
-const actual=
-used>0
-?
-used
-:
-4;
-
-gbTimerStep(actual);
-gbPPUStep(actual);
-
-cycles+=actual;
-
-}
-
-/*
-   Render the frame using the scroll state
-   captured for each scanline.
-*/
-gbPPUDrawBackground();
-
-}
-   
 /* =========================================================
    TIMER
 ========================================================= */
@@ -5361,13 +5304,10 @@ function gbTimerStep(cycles){
 gbTimer.div=
 (gbTimer.div+cycles)&0xFFFF;
 
-
 if(!(gbTimer.tac&0x04))
 return;
 
-
 gbTimer.counter+=cycles;
-
 
 const frequencies=[
 1024,
@@ -5381,13 +5321,11 @@ frequencies[
 gbTimer.tac&3
 ];
 
-
 while(
 gbTimer.counter>=threshold
 ){
 
 gbTimer.counter-=threshold;
-
 
 if(gbTimer.tima===0xFF){
 
@@ -5410,29 +5348,651 @@ gbTimer.tima=
 
 
 /* =========================================================
-   ROM LOADER
+   GAME BOY FRAME
 ========================================================= */
 
-const GB_ROM_PATH=
+const GB_CYCLES_PER_FRAME=70224;
+
+function gbRunFrame(){
+
+if(!gbROMLoaded)
+return;
+
+let cycles=0;
+
+while(
+cycles<GB_CYCLES_PER_FRAME
+){
+
+const used=
+gbCPU.step();
+
+const actual=
+used>0
+?
+used
+:
+4;
+
+gbTimerStep(actual);
+gbPPUStep(actual);
+
+cycles+=actual;
+
+}
+
+gbPPUDrawBackground();
+
+}
+
+
+/* =========================================================
+   GAME BOY AUDIO ENGINE
+========================================================= */
+
+/*
+   This is intentionally lightweight.
+
+   It reads the real Game Boy sound registers written by
+   the ROM and synthesizes:
+
+   CH1 = square + duty
+   CH2 = square + duty
+   CH3 = wave RAM
+   CH4 = noise
+
+   It is not a cycle-perfect APU, but it produces actual
+   game audio without an external core or WASM.
+*/
+
+const GBAudio={
+
+ctx:null,
+node:null,
+enabled:false,
+
+sampleRate:44100,
+
+start(){
+
+if(this.enabled)
+return;
+
+try{
+
+this.ctx=
+new(
+window.AudioContext||
+window.webkitAudioContext
+)();
+
+this.sampleRate=
+this.ctx.sampleRate||44100;
+
+this.node=
+this.ctx.createScriptProcessor(
+1024,
+0,
+2
+);
+
+this.node.onaudioprocess=
+e=>{
+
+const left=
+e.outputBuffer.getChannelData(0);
+
+const right=
+e.outputBuffer.getChannelData(1);
+
+for(
+let i=0;
+i<left.length;
+i++
+){
+
+const s=
+this.sample()*
+0.18;
+
+left[i]=s;
+right[i]=s;
+
+}
+
+};
+
+this.node.connect(
+this.ctx.destination
+);
+
+this.enabled=true;
+
+if(
+this.ctx.state==="suspended"
+)
+this.ctx.resume();
+
+}
+catch(e){
+
+console.error(
+"Game Boy audio failed:",
+e
+);
+
+}
+
+},
+
+
+stop(){
+
+this.enabled=false;
+
+if(this.node){
+
+try{
+this.node.disconnect();
+}
+catch(e){}
+
+this.node=null;
+
+}
+
+if(this.ctx){
+
+try{
+this.ctx.close();
+}
+catch(e){}
+
+this.ctx=null;
+
+}
+
+},
+
+
+square(channel){
+
+const regBase=
+channel===0
+?
+0xFF10
+:
+0xFF15;
+
+const dutyReg=
+channel===0
+?
+0xFF11
+:
+0xFF16;
+
+const volumeReg=
+channel===0
+?
+0xFF12
+:
+0xFF17;
+
+const lowReg=
+channel===0
+?
+0xFF13
+:
+0xFF18;
+
+const highReg=
+channel===0
+?
+0xFF14
+:
+0xFF19;
+
+const period=
+gbMemory[lowReg]|
+((gbMemory[highReg]&7)<<8);
+
+if(
+period>=2048
+)
+return 0;
+
+const frequency=
+131072/
+(2048-period);
+
+if(
+frequency<1 ||
+frequency>20000
+)
+return 0;
+
+const volume=
+(gbMemory[volumeReg]>>4)&15;
+
+if(volume===0)
+return 0;
+
+const duty=
+(gbMemory[dutyReg]>>6)&3;
+
+const dutyValues=[
+0.125,
+0.25,
+0.5,
+0.75
+];
+
+thisPhase:
+{
+
+}
+
+const phase=
+gbAPU.phase[channel];
+
+gbAPU.phase[channel]+=
+frequency/this.sampleRate;
+
+if(gbAPU.phase[channel]>=1)
+gbAPU.phase[channel]-=1;
+
+const high=
+phase<dutyValues[duty];
+
+return(
+high
+?
+1
+:
+-1
+)*
+(volume/15);
+
+},
+
+
+wave(){
+
+const nr30=
+gbMemory[0xFF1A];
+
+if(!(nr30&0x80))
+return 0;
+
+const period=
+gbMemory[0xFF1D]|
+((gbMemory[0xFF1E]&7)<<8);
+
+if(period>=2048)
+return 0;
+
+const level=
+(gbMemory[0xFF1C]>>5)&3;
+
+if(level===0)
+return 0;
+
+const frequency=
+65536/
+(2048-period);
+
+const phase=
+gbAPU.phase[2];
+
+gbAPU.phase[2]+=
+frequency/this.sampleRate;
+
+if(gbAPU.phase[2]>=1)
+gbAPU.phase[2]-=1;
+
+const sampleIndex=
+Math.floor(
+phase*32
+)&31;
+
+const byte=
+gbMemory[
+0xFF30+
+(sampleIndex>>1)
+];
+
+let value;
+
+if(sampleIndex&1)
+value=byte&15;
+else
+value=byte>>4;
+
+let out=
+(value-7.5)/7.5;
+
+if(level===2)
+out*=0.5;
+
+if(level===3)
+out*=0.25;
+
+return out;
+
+},
+
+
+noise(){
+
+const volume=
+(gbMemory[0xFF21]>>4)&15;
+
+if(volume===0)
+return 0;
+
+const nr43=
+gbMemory[0xFF22];
+
+const shift=
+nr43>>4;
+
+if(shift>=14)
+return 0;
+
+const dividerCode=
+nr43&7;
+
+const divisors=[
+8,
+16,
+32,
+48,
+64,
+80,
+96,
+112
+];
+
+const divisor=
+divisors[dividerCode];
+
+const frequency=
+262144/
+(
+divisor*
+Math.pow(2,shift)
+);
+
+if(frequency<=0)
+return 0;
+
+gbAPU.noisePhase+=
+frequency/this.sampleRate;
+
+while(
+gbAPU.noisePhase>=1
+){
+
+gbAPU.noisePhase-=1;
+
+const bit=
+(
+gbAPU.noiseLFSR^
+(gbAPU.noiseLFSR>>1)
+)&1;
+
+gbAPU.noiseLFSR=
+(gbAPU.noiseLFSR>>1)|
+(bit<<14);
+
+if(nr43&8){
+
+gbAPU.noiseLFSR=
+(gbAPU.noiseLFSR&~0x40)|
+(bit<<6);
+
+}
+
+}
+
+const output=
+(
+gbAPU.noiseLFSR&1
+)
+?
+-1
+:
+1;
+
+return output*
+(volume/15);
+
+},
+
+
+sample(){
+
+if(!sound)
+return 0;
+
+if(!(gbMemory[0xFF26]&0x80))
+return 0;
+
+let mixed=0;
+let count=0;
+
+
+/* CH1 */
+
+if(
+gbAPU.active[0] &&
+(gbMemory[0xFF12]&0xF8)
+){
+
+mixed+=this.square(0);
+count++;
+
+}
+
+
+/* CH2 */
+
+if(
+gbAPU.active[1] &&
+(gbMemory[0xFF17]&0xF8)
+){
+
+mixed+=this.square(1);
+count++;
+
+}
+
+
+/* CH3 */
+
+if(
+gbAPU.active[2] &&
+(gbMemory[0xFF1A]&0x80)
+){
+
+mixed+=this.wave();
+count++;
+
+}
+
+
+/* CH4 */
+
+if(
+gbAPU.active[3] &&
+(gbMemory[0xFF21]&0xF8)
+){
+
+mixed+=this.noise();
+count++;
+
+}
+
+
+if(!count)
+return 0;
+
+
+/* NR51 stereo routing */
+
+const nr51=
+gbMemory[0xFF25];
+
+let left=0;
+let right=0;
+
+if(gbAPU.active[0]){
+
+const v=this.square(0);
+
+if(nr51&0x10)
+left+=v;
+
+if(nr51&0x01)
+right+=v;
+
+}
+
+if(gbAPU.active[1]){
+
+const v=this.square(1);
+
+if(nr51&0x20)
+left+=v;
+
+if(nr51&0x02)
+right+=v;
+
+}
+
+if(gbAPU.active[2]){
+
+const v=this.wave();
+
+if(nr51&0x40)
+left+=v;
+
+if(nr51&0x04)
+right+=v;
+
+}
+
+if(gbAPU.active[3]){
+
+const v=this.noise();
+
+if(nr51&0x80)
+left+=v;
+
+if(nr51&0x08)
+right+=v;
+
+}
+
+
+/*
+   Use master volume from NR50.
+*/
+
+const nr50=
+gbMemory[0xFF24];
+
+const leftVolume=
+((nr50>>4)&7)+1;
+
+const rightVolume=
+(nr50&7)+1;
+
+const stereo=
+(
+left*
+leftVolume+
+right*
+rightVolume
+)/
+16;
+
+
+/*
+   If NR51 is not configured by the game,
+   fall back to the mixed signal.
+*/
+
+if(
+!(nr51&0xFF)
+){
+
+return mixed/count;
+
+}
+
+return stereo;
+
+}
+
+};
+
+
+/* =========================================================
+   ROM LOADING
+========================================================= */
+
+const GB_DEFAULT_ROM=
 "roms/Super Mario Land.gb";
 
+let GB_ROM_LIST=[];
 
 let gbROM=null;
 let gbROMLoaded=false;
 
 
-async function loadGBROM(){
+function gbPrepareCartridge(){
+
+gbCartridge.rom=
+gbROM;
+
+gbCartridge.romSize=
+gbROM.length;
+
+gbCartridge.romBank=1;
+gbCartridge.ramBank=0;
+gbCartridge.ramEnabled=false;
+gbCartridge.bankingMode=0;
+
+gbDetectCartridge();
+
+gbHardwareReset();
+
+gbCPU.reset();
+
+gbROMLoaded=true;
+
+}
+
+
+async function loadGBROM(path){
+
+if(!path)
+return;
+
+pause=1;
+
+gbROMLoaded=false;
 
 try{
 
 const response=
 await fetch(
-GB_ROM_PATH,
+path,
 {
 cache:"no-store"
 }
 );
-
 
 if(!response.ok){
 
@@ -5442,36 +6002,23 @@ throw new Error(
 
 }
 
-
 const buffer=
 await response.arrayBuffer();
-
 
 gbROM=
 new Uint8Array(buffer);
 
+gbPrepareCartridge();
 
-gbCartridge.rom=
-gbROM;
-
-
-gbCartridge.romSize=
-gbROM.length;
-
-
-gbDetectCartridge();
-
-
-gbHardwareReset();
+reset();
 
 gbCPU.reset();
 
-gbROMLoaded=true;
-
+pause=0;
 
 console.log(
 "Game Boy ROM loaded:",
-GB_ROM_PATH
+path
 );
 
 console.log(
@@ -5479,19 +6026,6 @@ console.log(
 gbROM.length,
 "bytes"
 );
-
-
-console.log(
-"ROM[0100-010F]:",
-Array.from(
-{length:16},
-(_,i)=>
-gbRead(0x0100+i)
-.toString(16)
-.padStart(2,"0")
-).join(" ")
-);
-
 
 console.log(
 "Entry opcode:",
@@ -5501,49 +6035,20 @@ gbRead(0x0100)
 .padStart(2,"0")
 );
 
-
-let title="";
-
-
-for(
-let i=0x0134;
-i<=0x0143;
-i++
-){
-
-const ch=
-gbROM[i];
-
-if(
-ch>=32 &&
-ch<=126
-){
-
-title+=
-String.fromCharCode(ch);
-
-}
-
-}
-
-
-console.log(
-"Cartridge title:",
-title.trim()
-);
-
-
-gbCPU.reset();
-
-
 }
 catch(e){
 
 gbROMLoaded=false;
+pause=1;
 
 console.error(
 "Game Boy ROM loading failed:",
 e
+);
+
+alert(
+"Could not load ROM:\n"+
+path
 );
 
 }
@@ -5552,7 +6057,7 @@ e
 
 
 /* =========================================================
-   CARTRIDGE HEADER
+   ROM HEADER
 ========================================================= */
 
 function gbDetectCartridge(){
@@ -5560,14 +6065,11 @@ function gbDetectCartridge(){
 if(!gbCartridge.rom)
 return;
 
-
 gbCartridge.mbcType=
 gbCartridge.rom[0x0147]||0;
 
-
 const romSizeCode=
 gbCartridge.rom[0x0148]||0;
-
 
 if(romSizeCode<=8){
 
@@ -5583,7 +6085,6 @@ gbCartridge.rom.length;
 
 }
 
-
 console.log(
 "Game Boy cartridge type:",
 "0x"+
@@ -5592,13 +6093,195 @@ gbCartridge.mbcType
 .padStart(2,"0")
 );
 
-console.log(
-"Game Boy cartridge ROM:",
-gbCartridge.romSize,
-"bytes"
+}
+
+
+/* =========================================================
+   ROM SELECTOR
+========================================================= */
+
+const romSelect=
+document.getElementById(
+"romSelect"
 );
 
+
+function gbRomDisplayName(path){
+
+let name=
+path.split("/").pop();
+
+try{
+
+name=
+decodeURIComponent(name);
+
 }
+catch(e){}
+
+return name;
+
+}
+
+
+function populateROMSelector(list){
+
+GB_ROM_LIST=
+Array.isArray(list)
+?
+list
+:
+[];
+
+romSelect.innerHTML="";
+
+
+for(const path of GB_ROM_LIST){
+
+const option=
+document.createElement("option");
+
+option.value=path;
+option.textContent=
+gbRomDisplayName(path);
+
+romSelect.appendChild(option);
+
+}
+
+
+if(!GB_ROM_LIST.length){
+
+const option=
+document.createElement("option");
+
+option.value=GB_DEFAULT_ROM;
+option.textContent=
+gbRomDisplayName(
+GB_DEFAULT_ROM
+);
+
+romSelect.appendChild(option);
+
+}
+
+
+romSelect.value=
+GB_ROM_LIST.includes(GB_DEFAULT_ROM)
+?
+GB_DEFAULT_ROM
+:
+romSelect.options[0].value;
+
+}
+
+
+async function loadROMList(){
+
+try{
+
+const response=
+await fetch(
+"roms/index.json",
+{
+cache:"no-store"
+}
+);
+
+if(!response.ok)
+throw new Error(
+"HTTP "+response.status
+);
+
+const list=
+await response.json();
+
+populateROMSelector(list);
+
+}
+catch(e){
+
+console.warn(
+"roms/index.json not found. Using default ROM."
+);
+
+populateROMSelector([
+GB_DEFAULT_ROM
+]);
+
+}
+
+}
+
+
+romSelect.addEventListener(
+"change",
+function(){
+
+const path=
+romSelect.value;
+
+if(path)
+loadGBROM(path);
+
+}
+);
+
+
+/* =========================================================
+   TOP BUTTONS
+========================================================= */
+
+document.getElementById(
+"pause"
+).onclick=function(){
+
+pause=!pause;
+
+};
+
+
+document.getElementById(
+"reset"
+).onclick=function(){
+
+reset();
+
+if(gbROMLoaded)
+gbReset();
+
+};
+
+
+document.getElementById(
+"sound"
+).onclick=function(){
+
+sound=!sound;
+
+document.getElementById(
+"sound"
+).textContent=
+sound
+?
+"SOUND ON"
+:
+"SOUND";
+
+if(sound){
+
+GBAudio.start();
+
+beep(700,.05);
+
+}
+else{
+
+GBAudio.stop();
+
+}
+
+};
 
 
 /* =========================================================
@@ -5609,13 +6292,9 @@ function loop(t){
 
 last=t;
 
-if(gbROMLoaded){
-
-if(!pause){
+if(gbROMLoaded&&!pause){
 
 gbRunFrame();
-
-}
 
 }
 
@@ -5635,12 +6314,15 @@ requestAnimationFrame(gp);
 requestAnimationFrame(loop);
 
 
+/* A is the initial focused action button,
+   preserving the PS5 X = focused button behavior. */
+
 setTimeout(
 function(){
 
 try{
 
-jumpBtn.focus();
+buttonA.focus();
 
 }
 catch(e){}
@@ -5650,7 +6332,18 @@ catch(e){}
 );
 
 
-loadGBROM();
+/* Load ROM list and default ROM */
+
+loadROMList().then(
+function(){
+
+loadGBROM(
+romSelect.value||
+GB_DEFAULT_ROM
+);
+
+}
+);
 
 </script>
 
