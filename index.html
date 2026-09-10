@@ -304,14 +304,12 @@ d:0
 };
 
 const keyboardInput={
-  left:0,
-  right:0,
-  up:0,
-  down:0,
-  a:0,
-  b:0,
-  start:0,
-  select:0
+left:0,
+right:0,
+up:0,
+down:0,
+a:0,
+b:0
 };
 
 const gamepadInput={
@@ -1345,105 +1343,138 @@ pressB,
 
 function gameKey(e){
 
-  let z=e.key.toLowerCase();
+let z=e.key.toLowerCase();
 
-  if(
-    z==="arrowleft" ||
-    z==="arrowright" ||
-    z==="arrowup" ||
-    z==="arrowdown" ||
-    z===" " ||
-    z==="a" ||
-    z==="d" ||
-    z==="w" ||
-    z==="z" ||
-    z==="x" ||
-    z==="shift" ||
-    z==="enter" ||
-    z==="backspace"
-  ){
-    e.preventDefault();
-  }
+if(
+z==="arrowleft" ||
+z==="arrowright" ||
+z==="arrowup" ||
+z==="arrowdown" ||
+z===" " ||
+z==="a" ||
+z==="d" ||
+z==="w" ||
+z==="z" ||
+z==="x" ||
+z==="shift"
+){
 
-  if(z==="arrowleft" || z==="a")
-    keyboardInput.left=1;
+e.preventDefault();
 
-  if(z==="arrowright" || z==="d")
-    keyboardInput.right=1;
+}
 
-  if(z==="arrowup" || z==="w")
-    keyboardInput.up=1;
+if(z==="arrowleft" || z==="a")
+keyboardInput.left=1;
 
-  if(z==="arrowdown")
-    keyboardInput.down=1;
+if(z==="arrowright" || z==="d")
+keyboardInput.right=1;
 
-  if(z===" ")
-    keyboardInput.a=1;
+if(z==="arrowup" || z==="w")
+keyboardInput.up=1;
 
-  if(z==="z" || z==="x" || z==="shift")
-    keyboardInput.b=1;
+if(z==="arrowdown")
+keyboardInput.down=1;
 
-  if(z==="enter")
-    keyboardInput.start=1;
+if(z===" ")
+keyboardInput.a=1;
 
-  if(z==="backspace")
-    keyboardInput.select=1;
+if(
+z==="z" ||
+z==="x" ||
+z==="shift"
+)
+keyboardInput.b=1;
 
-  if(z==="escape"){
-    e.preventDefault();
-    pause=!pause;
-  }
+if(z==="enter"){
+e.preventDefault();
+gbJoypad.START=1;
+}
+
+if(z==="backspace"){
+e.preventDefault();
+gbJoypad.SELECT=1;
+}
+
+if(z==="escape"){
+
+e.preventDefault();
+
+pause=!pause;
+
+}
 
 }
 
 
 function gameKeyUp(e){
 
-  let z=e.key.toLowerCase();
+let z=e.key.toLowerCase();
 
-  if(
-    z==="arrowleft" ||
-    z==="arrowright" ||
-    z==="arrowup" ||
-    z==="arrowdown" ||
-    z===" " ||
-    z==="a" ||
-    z==="d" ||
-    z==="w" ||
-    z==="z" ||
-    z==="x" ||
-    z==="shift" ||
-    z==="enter" ||
-    z==="backspace"
-  ){
-    e.preventDefault();
-  }
+if(
+z==="arrowleft" ||
+z==="arrowright" ||
+z==="arrowup" ||
+z==="arrowdown" ||
+z===" " ||
+z==="a" ||
+z==="d" ||
+z==="w" ||
+z==="z" ||
+z==="x" ||
+z==="shift"
+){
 
-  if(z==="arrowleft" || z==="a")
-    keyboardInput.left=0;
-
-  if(z==="arrowright" || z==="d")
-    keyboardInput.right=0;
-
-  if(z==="arrowup" || z==="w")
-    keyboardInput.up=0;
-
-  if(z==="arrowdown")
-    keyboardInput.down=0;
-
-  if(z===" ")
-    keyboardInput.a=0;
-
-  if(z==="z" || z==="x" || z==="shift")
-    keyboardInput.b=0;
-
-  if(z==="enter")
-    keyboardInput.start=0;
-
-  if(z==="backspace")
-    keyboardInput.select=0;
+e.preventDefault();
 
 }
+
+if(z==="arrowleft" || z==="a")
+keyboardInput.left=0;
+
+if(z==="arrowright" || z==="d")
+keyboardInput.right=0;
+
+if(z==="arrowup" || z==="w")
+keyboardInput.up=0;
+
+if(z==="arrowdown")
+keyboardInput.down=0;
+
+if(z===" ")
+keyboardInput.a=0;
+
+if(
+z==="z" ||
+z==="x" ||
+z==="shift"
+)
+keyboardInput.b=0;
+
+if(z==="enter"){
+e.preventDefault();
+gbJoypad.START=0;
+}
+
+if(z==="backspace"){
+e.preventDefault();
+gbJoypad.SELECT=0;
+}
+
+}
+
+
+document.addEventListener(
+"keydown",
+gameKey,
+{passive:false}
+);
+
+document.addEventListener(
+"keyup",
+gameKeyUp,
+{passive:false}
+);
+
 
 /* =========================================================
    BLOCK PAGE SCROLL
@@ -1759,8 +1790,7 @@ virtualInput.b
 1
 :
 0;
-gbJoypad.START=keyboardInput.start?1:0;
-gbJoypad.SELECT=keyboardInput.select?1:0;
+
 
 requestAnimationFrame(gp);
 
