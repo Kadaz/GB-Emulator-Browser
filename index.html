@@ -4890,18 +4890,19 @@ palette>>
    PPU DRAW
 ========================================================= */
 
-function gbPPUDrawBackground(){
-
-const ctx=gbCtx;
-
-const image=gbImage;
-
-const palette=[
+   const gbPalette=[
 255,
 192,
 96,
 0
 ];
+   
+function gbPPUDrawBackground(){
+
+const ctx=gbCtx;
+
+const image=gbImage;
+const palette=gbPalette;
 
 const bgColorIndex=
 gbBGColorIndex;
