@@ -4904,19 +4904,10 @@ const ctx=gbCtx;
 const image=gbImage;
 const palette=gbPalette;
 
-onst bgColorIndex=gbBGColorIndex;
-
-const bgMapBase=
-(gbPPU.lcdc&0x08)
-?
-0x9C00
-:
-0x9800;
+const bgColorIndex=gbBGColorIndex;
 
 
 /* BACKGROUND */
-
-for(let y=0;y<144;y++){
 
 for(let y=0;y<144;y++){
 
