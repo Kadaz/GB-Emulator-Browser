@@ -2346,7 +2346,9 @@ function gbAPUWrite(addr,value){
 gbMemory[addr]=value&0xFF;
 
 
-/* APU master */
+/* =========================================================
+   APU MASTER
+========================================================= */
 
 if(addr===0xFF26){
 
@@ -2382,41 +2384,107 @@ return;
 }
 
 
-/* CH1 trigger */
+/* =========================================================
+   CHANNEL 1 TRIGGER
+========================================================= */
 
-if(addr===0xFF14 && (value&0x80)){
+if(
+addr===0xFF14 &&
+(value&0x80)
+){
 
-if((gbMemory[0xFF12]&0xF8)!==0){
+if(
+(gbMemory[0xFF12]&0xF8)!==0
+){
 
 gbAPU.active[0]=1;
+
+/* Restart waveform immediately. */
 gbAPU.phase[0]=0;
 
+/* Restart envelope from its initial volume. */
+if(window.GBAudio){
+
+GBAudio.envelopeVolume[0]=
+(gbMemory[0xFF12]>>4)&15;
+
+GBAudio.envelopeTimer[0]=0;
+
+GBAudio.envelopeLastReg[0]=
+gbMemory[0xFF12];
+
+/* Restart sweep state. */
+GBAudio.sweepFrequency=
+gbMemory[0xFF13]|
+((gbMemory[0xFF14]&7)<<8);
+
+GBAudio.sweepTimer=0;
+
+GBAudio.sweepEnabled=
+((gbMemory[0xFF10]>>4)&7)!==0;
+
+GBAudio.sweepLastReg=
+gbMemory[0xFF10];
+
+}
+
 }
 
 }
 
 
-/* CH2 trigger */
+/* =========================================================
+   CHANNEL 2 TRIGGER
+========================================================= */
 
-if(addr===0xFF19 && (value&0x80)){
+if(
+addr===0xFF19 &&
+(value&0x80)
+){
 
-if((gbMemory[0xFF17]&0xF8)!==0){
+if(
+(gbMemory[0xFF17]&0xF8)!==0
+){
 
 gbAPU.active[1]=1;
+
+/* Restart waveform immediately. */
 gbAPU.phase[1]=0;
 
+/* Restart envelope. */
+if(window.GBAudio){
+
+GBAudio.envelopeVolume[1]=
+(gbMemory[0xFF17]>>4)&15;
+
+GBAudio.envelopeTimer[1]=0;
+
+GBAudio.envelopeLastReg[1]=
+gbMemory[0xFF17];
+
+}
+
 }
 
 }
 
 
-/* CH3 trigger */
+/* =========================================================
+   CHANNEL 3 TRIGGER
+========================================================= */
 
-if(addr===0xFF1E && (value&0x80)){
+if(
+addr===0xFF1E &&
+(value&0x80)
+){
 
-if(gbMemory[0xFF1A]&0x80){
+if(
+gbMemory[0xFF1A]&0x80
+){
 
 gbAPU.active[2]=1;
+
+/* Restart wave position. */
 gbAPU.phase[2]=0;
 
 }
@@ -2424,22 +2492,43 @@ gbAPU.phase[2]=0;
 }
 
 
-/* CH4 trigger */
+/* =========================================================
+   CHANNEL 4 TRIGGER
+========================================================= */
 
-if(addr===0xFF23 && (value&0x80)){
+if(
+addr===0xFF23 &&
+(value&0x80)
+){
 
-if((gbMemory[0xFF21]&0xF8)!==0){
+if(
+(gbMemory[0xFF21]&0xF8)!==0
+){
 
 gbAPU.active[3]=1;
+
+/* Restart noise generator. */
 gbAPU.noisePhase=0;
 gbAPU.noiseLFSR=0x7FFF;
 
-}
+/* Restart noise envelope. */
+if(window.GBAudio){
+
+GBAudio.envelopeVolume[3]=
+(gbMemory[0xFF21]>>4)&15;
+
+GBAudio.envelopeTimer[3]=0;
+
+GBAudio.envelopeLastReg[3]=
+gbMemory[0xFF21];
 
 }
 
 }
 
+}
+
+}
 
 /* =========================================================
    MEMORY WRITE
