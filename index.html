@@ -5813,6 +5813,22 @@ return 0;
 let mixed=0;
 let count=0;
 
+const channel=[
+0,
+0,
+0,
+0
+];
+
+
+/*
+   Calculate every channel ONCE per output sample.
+   The previous version calculated them once for
+   mixing and again for stereo routing, which advanced
+   the waveform phases twice and could make the sound
+   rougher and less accurate.
+*/
+
 
 /* CH1 */
 
@@ -5821,7 +5837,10 @@ gbAPU.active[0] &&
 (gbMemory[0xFF12]&0xF8)
 ){
 
-mixed+=this.square(0);
+channel[0]=
+this.square(0);
+
+mixed+=channel[0];
 count++;
 
 }
@@ -5834,7 +5853,10 @@ gbAPU.active[1] &&
 (gbMemory[0xFF17]&0xF8)
 ){
 
-mixed+=this.square(1);
+channel[1]=
+this.square(1);
+
+mixed+=channel[1];
 count++;
 
 }
@@ -5847,7 +5869,10 @@ gbAPU.active[2] &&
 (gbMemory[0xFF1A]&0x80)
 ){
 
-mixed+=this.wave();
+channel[2]=
+this.wave();
+
+mixed+=channel[2];
 count++;
 
 }
@@ -5860,7 +5885,10 @@ gbAPU.active[3] &&
 (gbMemory[0xFF21]&0xF8)
 ){
 
-mixed+=this.noise();
+channel[3]=
+this.noise();
+
+mixed+=channel[3];
 count++;
 
 }
@@ -5878,53 +5906,29 @@ gbMemory[0xFF25];
 let left=0;
 let right=0;
 
-if(gbAPU.active[0]){
-
-const v=this.square(0);
-
 if(nr51&0x10)
-left+=v;
+left+=channel[0];
 
 if(nr51&0x01)
-right+=v;
-
-}
-
-if(gbAPU.active[1]){
-
-const v=this.square(1);
+right+=channel[0];
 
 if(nr51&0x20)
-left+=v;
+left+=channel[1];
 
 if(nr51&0x02)
-right+=v;
-
-}
-
-if(gbAPU.active[2]){
-
-const v=this.wave();
+right+=channel[1];
 
 if(nr51&0x40)
-left+=v;
+left+=channel[2];
 
 if(nr51&0x04)
-right+=v;
-
-}
-
-if(gbAPU.active[3]){
-
-const v=this.noise();
+right+=channel[2];
 
 if(nr51&0x80)
-left+=v;
+left+=channel[3];
 
 if(nr51&0x08)
-right+=v;
-
-}
+right+=channel[3];
 
 
 /*
