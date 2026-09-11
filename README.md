@@ -16,6 +16,8 @@ The main goal of this project is **PlayStation 5 browser compatibility**, while 
 * Simple static web structure
 * Designed to work without external emulator cores or downloads
 
+* Test It Here: https://kadaz.github.io/GB-Emulator-Browser/
+
 ## PlayStation 5 Controls
 
 ### Game Boy
