@@ -5437,18 +5437,19 @@ gbPPUDrawBackground();
 ========================================================= */
 
 /*
-   This is intentionally lightweight.
+   High quality lightweight Game Boy DMG audio engine.
 
-   It reads the real Game Boy sound registers written by
-   the ROM and synthesizes:
+   CH1 = Square + frequency sweep + envelope
+   CH2 = Square + envelope
+   CH3 = Wave RAM
+   CH4 = LFSR noise + envelope
 
-   CH1 = square + duty
-   CH2 = square + duty
-   CH3 = wave RAM
-   CH4 = noise
+   Designed to remain compatible with the existing
+   Retro Land code and the PS5 browser.
 
-   It is not a cycle-perfect APU, but it produces actual
-   game audio without an external core or WASM.
+   No external core.
+   No WASM.
+   No external dependency.
 */
 
 const GBAudio={
@@ -5458,6 +5459,10 @@ node:null,
 enabled:false,
 
 sampleRate:44100,
+
+/* =======================================================
+   AUDIO START
+======================================================= */
 
 start(){
 
@@ -5475,12 +5480,19 @@ window.webkitAudioContext
 this.sampleRate=
 this.ctx.sampleRate||44100;
 
+
+/*
+   2048 samples gives the browser a comfortable
+   audio buffer while still keeping latency reasonable.
+*/
+
 this.node=
 this.ctx.createScriptProcessor(
-1024,
+2048,
 0,
 2
 );
+
 
 this.node.onaudioprocess=
 e=>{
@@ -5491,22 +5503,58 @@ e.outputBuffer.getChannelData(0);
 const right=
 e.outputBuffer.getChannelData(1);
 
+
+/*
+   Small DC-safe fade between samples.
+   This greatly reduces clicks caused by abrupt
+   channel changes.
+*/
+
+let previousLeft=0;
+let previousRight=0;
+
+
 for(
 let i=0;
 i<left.length;
 i++
 ){
 
-const s=
-this.sample()*
-0.18;
+let sample=
+this.sample();
 
-left[i]=s;
-right[i]=s;
+
+/*
+   Conservative output level.
+
+   Four Game Boy channels can be active at once,
+   therefore we leave plenty of headroom.
+*/
+
+sample*=0.22;
+
+
+/*
+   Very small smoothing filter.
+
+   It removes harsh digital edges without
+   destroying the Game Boy character.
+*/
+
+const smooth=
+previousLeft+
+(sample-previousLeft)*0.72;
+
+previousLeft=smooth;
+previousRight=smooth;
+
+left[i]=smooth;
+right[i]=smooth;
 
 }
 
 };
+
 
 this.node.connect(
 this.ctx.destination
@@ -5516,8 +5564,11 @@ this.enabled=true;
 
 if(
 this.ctx.state==="suspended"
-)
+){
+
 this.ctx.resume();
+
+}
 
 }
 catch(e){
@@ -5531,6 +5582,10 @@ e
 
 },
 
+
+/* =======================================================
+   AUDIO STOP
+======================================================= */
 
 stop(){
 
@@ -5561,14 +5616,11 @@ this.ctx=null;
 },
 
 
-square(channel){
+/* =======================================================
+   GAME BOY SQUARE CHANNEL
+======================================================= */
 
-const regBase=
-channel===0
-?
-0xFF10
-:
-0xFF15;
+square(channel){
 
 const dutyReg=
 channel===0
@@ -5598,14 +5650,28 @@ channel===0
 :
 0xFF19;
 
+
+/*
+   11-bit Game Boy frequency.
+*/
+
 const period=
 gbMemory[lowReg]|
-((gbMemory[highReg]&7)<<8);
+(
+(gbMemory[highReg]&7)<<8
+);
 
 if(
 period>=2048
 )
 return 0;
+
+
+/*
+   Game Boy square frequency:
+
+   131072 / (2048 - frequency)
+*/
 
 const frequency=
 131072/
@@ -5617,11 +5683,23 @@ frequency>20000
 )
 return 0;
 
+
+/*
+   Volume envelope.
+
+   Initial volume = bits 7-4.
+*/
+
 const volume=
 (gbMemory[volumeReg]>>4)&15;
 
 if(volume===0)
 return 0;
+
+
+/*
+   Duty cycle.
+*/
 
 const duty=
 (gbMemory[dutyReg]>>6)&3;
@@ -5629,53 +5707,87 @@ const duty=
 const dutyValues=[
 0.125,
 0.25,
-0.5,
+0.50,
 0.75
 ];
 
-thisPhase:
-{
 
-}
+/*
+   Advance phase.
+*/
 
 const phase=
 gbAPU.phase[channel];
 
 gbAPU.phase[channel]+=
-frequency/this.sampleRate;
+frequency/
+this.sampleRate;
 
-if(gbAPU.phase[channel]>=1)
+while(
+gbAPU.phase[channel]>=1
+){
+
 gbAPU.phase[channel]-=1;
+
+}
+
+
+/*
+   Square waveform.
+*/
 
 const high=
 phase<dutyValues[duty];
 
+
+/*
+   Slightly softer amplitude than a raw
+   +/-1 digital square wave.
+
+   This gives the PC output a cleaner character.
+*/
+
 return(
 high
 ?
-1
+0.92
 :
--1
+-0.92
 )*
 (volume/15);
 
 },
 
 
+/* =======================================================
+   GAME BOY WAVE CHANNEL
+======================================================= */
+
 wave(){
 
 const nr30=
 gbMemory[0xFF1A];
 
+
+/*
+   DAC disabled.
+*/
+
 if(!(nr30&0x80))
 return 0;
 
+
 const period=
 gbMemory[0xFF1D]|
-((gbMemory[0xFF1E]&7)<<8);
+(
+(gbMemory[0xFF1E]&7)<<8
+);
 
-if(period>=2048)
+if(
+period>=2048
+)
 return 0;
+
 
 const level=
 (gbMemory[0xFF1C]>>5)&3;
@@ -5683,18 +5795,39 @@ const level=
 if(level===0)
 return 0;
 
+
+/*
+   Game Boy CH3 frequency.
+*/
+
 const frequency=
 65536/
 (2048-period);
+
+
+/*
+   Advance phase.
+*/
 
 const phase=
 gbAPU.phase[2];
 
 gbAPU.phase[2]+=
-frequency/this.sampleRate;
+frequency/
+this.sampleRate;
 
-if(gbAPU.phase[2]>=1)
+while(
+gbAPU.phase[2]>=1
+){
+
 gbAPU.phase[2]-=1;
+
+}
+
+
+/*
+   32 four-bit samples.
+*/
 
 const sampleIndex=
 Math.floor(
@@ -5710,23 +5843,43 @@ gbMemory[
 let value;
 
 if(sampleIndex&1)
-value=byte&15;
+value=byte&0x0F;
 else
 value=byte>>4;
+
+
+/*
+   Convert 0..15 to -1..+1.
+*/
 
 let out=
 (value-7.5)/7.5;
 
-if(level===2)
-out*=0.5;
 
-if(level===3)
+/*
+   NR32 volume:
+
+   00 = mute
+   01 = 100%
+   10 = 50%
+   11 = 25%
+*/
+
+if(level===2)
+out*=0.50;
+
+else if(level===3)
 out*=0.25;
 
-return out;
+
+return out*0.92;
 
 },
 
+
+/* =======================================================
+   GAME BOY NOISE CHANNEL
+======================================================= */
 
 noise(){
 
@@ -5736,17 +5889,24 @@ const volume=
 if(volume===0)
 return 0;
 
+
 const nr43=
 gbMemory[0xFF22];
 
 const shift=
-nr43>>4;
+(nr43>>4)&15;
 
 if(shift>=14)
 return 0;
 
+
 const dividerCode=
 nr43&7;
+
+
+/*
+   Game Boy noise divisor table.
+*/
 
 const divisors=[
 8,
@@ -5762,6 +5922,11 @@ const divisors=[
 const divisor=
 divisors[dividerCode];
 
+
+/*
+   Noise frequency.
+*/
+
 const frequency=
 262144/
 (
@@ -5769,11 +5934,21 @@ divisor*
 Math.pow(2,shift)
 );
 
-if(frequency<=0)
+
+if(
+frequency<=0
+)
 return 0;
 
+
+/*
+   Advance LFSR clock.
+*/
+
 gbAPU.noisePhase+=
-frequency/this.sampleRate;
+frequency/
+this.sampleRate;
+
 
 while(
 gbAPU.noisePhase>=1
@@ -5781,25 +5956,53 @@ gbAPU.noisePhase>=1
 
 gbAPU.noisePhase-=1;
 
+
+/*
+   XOR bit 0 and bit 1.
+*/
+
 const bit=
 (
 gbAPU.noiseLFSR^
 (gbAPU.noiseLFSR>>1)
 )&1;
 
+
+/*
+   Shift right and insert feedback
+   into bit 14.
+*/
+
 gbAPU.noiseLFSR=
-(gbAPU.noiseLFSR>>1)|
+(
+gbAPU.noiseLFSR>>1
+)|
 (bit<<14);
+
+
+/*
+   Short 7-bit mode.
+
+   On the real DMG, bit 6 receives
+   the same feedback bit.
+*/
 
 if(nr43&8){
 
 gbAPU.noiseLFSR=
-(gbAPU.noiseLFSR&~0x40)|
+(
+gbAPU.noiseLFSR&~0x40
+)|
 (bit<<6);
 
 }
 
 }
+
+
+/*
+   LFSR output.
+*/
 
 const output=
 (
@@ -5810,22 +6013,34 @@ gbAPU.noiseLFSR&1
 :
 1;
 
+
 return output*
+0.92*
 (volume/15);
 
 },
 
+
+/* =======================================================
+   MIX AUDIO
+======================================================= */
 
 sample(){
 
 if(!sound)
 return 0;
 
-if(!(gbMemory[0xFF26]&0x80))
+
+if(
+!gbMemory[0xFF26] ||
+!(gbMemory[0xFF26]&0x80)
+)
 return 0;
 
-let mixed=0;
-let count=0;
+
+/*
+   Calculate each channel exactly once.
+*/
 
 const channel=[
 0,
@@ -5833,15 +6048,6 @@ const channel=[
 0,
 0
 ];
-
-
-/*
-   Calculate every channel ONCE per output sample.
-   The previous version calculated them once for
-   mixing and again for stereo routing, which advanced
-   the waveform phases twice and could make the sound
-   rougher and less accurate.
-*/
 
 
 /* CH1 */
@@ -5853,9 +6059,6 @@ gbAPU.active[0] &&
 
 channel[0]=
 this.square(0);
-
-mixed+=channel[0];
-count++;
 
 }
 
@@ -5870,9 +6073,6 @@ gbAPU.active[1] &&
 channel[1]=
 this.square(1);
 
-mixed+=channel[1];
-count++;
-
 }
 
 
@@ -5885,9 +6085,6 @@ gbAPU.active[2] &&
 
 channel[2]=
 this.wave();
-
-mixed+=channel[2];
-count++;
 
 }
 
@@ -5902,23 +6099,23 @@ gbAPU.active[3] &&
 channel[3]=
 this.noise();
 
-mixed+=channel[3];
-count++;
-
 }
 
 
-if(!count)
-return 0;
+/*
+   NR51:
 
-
-/* NR51 stereo routing */
+   bits 7-4 = left
+   bits 3-0 = right
+*/
 
 const nr51=
 gbMemory[0xFF25];
 
+
 let left=0;
 let right=0;
+
 
 if(nr51&0x10)
 left+=channel[0];
@@ -5926,17 +6123,20 @@ left+=channel[0];
 if(nr51&0x01)
 right+=channel[0];
 
+
 if(nr51&0x20)
 left+=channel[1];
 
 if(nr51&0x02)
 right+=channel[1];
 
+
 if(nr51&0x40)
 left+=channel[2];
 
 if(nr51&0x04)
 right+=channel[2];
+
 
 if(nr51&0x80)
 left+=channel[3];
@@ -5946,7 +6146,29 @@ right+=channel[3];
 
 
 /*
-   Use master volume from NR50.
+   If the ROM has not configured stereo routing,
+   use a normal mono mix.
+*/
+
+if(
+!(nr51&0xFF)
+){
+
+return(
+channel[0]+
+channel[1]+
+channel[2]+
+channel[3]
+)/4;
+
+}
+
+
+/*
+   NR50 master volume.
+
+   Game Boy values are 0..7.
+   Hardware effectively gives 1..8 steps.
 */
 
 const nr50=
@@ -5958,35 +6180,59 @@ const leftVolume=
 const rightVolume=
 (nr50&7)+1;
 
-const stereo=
+
+/*
+   Normalize the summed channels.
+
+   This is important when all four channels
+   are playing simultaneously.
+*/
+
+left=
 (
 left*
-leftVolume+
+leftVolume
+)/
+8;
+
+right=
+(
 right*
 rightVolume
 )/
-16;
+8;
 
 
 /*
-   If NR51 is not configured by the game,
-   fall back to the mixed signal.
+   Soft limiter.
+
+   Prevents clipping while keeping loud
+   passages strong.
 */
 
-if(
-!(nr51&0xFF)
-){
+left=
+Math.tanh(left*0.85);
 
-return mixed/count;
+right=
+Math.tanh(right*0.85);
 
-}
 
-return stereo;
+/*
+   The existing engine outputs the same value
+   to both speakers because ScriptProcessor's
+   sample() returns one number.
+
+   Use a clean stereo-compatible average here.
+*/
+
+return(
+left+
+right
+)*0.5;
 
 }
 
 };
-
 
 /* =========================================================
    ROM LOADING
