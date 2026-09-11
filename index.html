@@ -45,7 +45,8 @@ white-space:nowrap;
 }
 
 #romSelect{
-max-width:230px;
+width:300px;
+max-width:300px;
 height:32px;
 background:#293426;
 color:#e5efc8;
@@ -168,8 +169,12 @@ RETRO LAND — GAME BOY STYLE
 </b>
 
 <select id="romSelect">
-<option value="">Loading ROMs...</option>
+<option value="">Select ROM...</option>
 </select>
+
+<input id="romFile" type="file" accept=".gb" style="display:none">
+
+<button id="romFileBtn" type="button">OPEN ROM</button>
 
 </div>
 
@@ -1385,16 +1390,6 @@ z==="shift"
 )
 keyboardInput.b=1;
 
-if(z==="enter"){
-e.preventDefault();
-gbJoypad.START=1;
-}
-
-if(z==="backspace"){
-e.preventDefault();
-gbJoypad.SELECT=1;
-}
-
 if(z==="escape"){
 
 e.preventDefault();
@@ -1449,16 +1444,6 @@ z==="x" ||
 z==="shift"
 )
 keyboardInput.b=0;
-
-if(z==="enter"){
-e.preventDefault();
-gbJoypad.START=0;
-}
-
-if(z==="backspace"){
-e.preventDefault();
-gbJoypad.SELECT=0;
-}
 
 }
 
@@ -6076,6 +6061,62 @@ path
 }
 
 
+async function loadGBROMFile(file){
+
+if(!file)
+return;
+
+pause=1;
+gbROMLoaded=false;
+
+try{
+
+const buffer=await file.arrayBuffer();
+
+if(!buffer.byteLength)
+throw new Error("Empty ROM");
+
+gbROM=new Uint8Array(buffer);
+
+gbPrepareCartridge();
+
+reset();
+gbCPU.reset();
+pause=0;
+
+romSelect.value="";
+
+console.log(
+"Local Game Boy ROM loaded:",
+file.name
+);
+
+console.log(
+"ROM size:",
+gbROM.length,
+"bytes"
+);
+
+}
+catch(e){
+
+gbROMLoaded=false;
+pause=1;
+
+console.error(
+"Local Game Boy ROM loading failed:",
+e
+);
+
+alert(
+"Could not load ROM:\n"+
+file.name
+);
+
+}
+}
+
+
 /* =========================================================
    ROM HEADER
 ========================================================= */
@@ -6175,23 +6216,27 @@ if(!GB_ROM_LIST.length){
 const option=
 document.createElement("option");
 
-option.value=GB_DEFAULT_ROM;
-option.textContent=
-gbRomDisplayName(
-GB_DEFAULT_ROM
-);
+option.value="";
+option.textContent="No ROMs found";
+option.disabled=true;
 
 romSelect.appendChild(option);
 
 }
 
+const placeholder=
+document.createElement("option");
 
-romSelect.value=
-GB_ROM_LIST.includes(GB_DEFAULT_ROM)
-?
-GB_DEFAULT_ROM
-:
-romSelect.options[0].value;
+placeholder.value="";
+placeholder.textContent="Select ROM...";
+placeholder.disabled=false;
+
+romSelect.insertBefore(
+placeholder,
+romSelect.firstChild
+);
+
+romSelect.value="";
 
 }
 
@@ -6225,9 +6270,7 @@ console.warn(
 "roms/index.json not found. Using default ROM."
 );
 
-populateROMSelector([
-GB_DEFAULT_ROM
-]);
+populateROMSelector([]);
 
 }
 
@@ -6243,6 +6286,32 @@ romSelect.value;
 
 if(path)
 loadGBROM(path);
+
+}
+);
+
+const romFile=
+document.getElementById("romFile");
+
+const romFileBtn=
+document.getElementById("romFileBtn");
+
+romFileBtn.onclick=function(){
+
+romFile.click();
+
+};
+
+romFile.addEventListener(
+"change",
+function(){
+
+const file=romFile.files&&romFile.files[0];
+
+if(file)
+loadGBROMFile(file);
+
+romFile.value="";
 
 }
 );
@@ -6352,18 +6421,11 @@ catch(e){}
 );
 
 
-/* Load ROM list and default ROM */
+/* Load ROM list only.
+   A ROM is loaded only after the user selects it
+   or opens one from the PC file explorer. */
 
-loadROMList().then(
-function(){
-
-loadGBROM(
-romSelect.value||
-GB_DEFAULT_ROM
-);
-
-}
-);
+loadROMList();
 
 </script>
 
