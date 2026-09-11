@@ -199,6 +199,10 @@ RESET
 SOUND
 </button>
 
+<button id="speed">
+SPEED 1X
+</button>      
+
 </span>
 
 </div>
@@ -345,6 +349,8 @@ let last=0;
 let cam=0;
 let opt=0;
 
+/* Emulator speed */
+let speed2x=0;   
 
 /* =========================================================
    GAME BOY JOYPAD
@@ -6421,7 +6427,22 @@ GBAudio.stop();
 
 };
 
+document.getElementById(
+"speed"
+).onclick=function(){
 
+speed2x=!speed2x;
+
+document.getElementById(
+"speed"
+).textContent=
+speed2x
+?
+"SPEED 2X"
+:
+"SPEED 1X";
+
+};
 /* =========================================================
    GAME LOOP
 ========================================================= */
@@ -6432,14 +6453,23 @@ last=t;
 
 if(gbROMLoaded&&!pause){
 
+if(speed2x){
+
 gbRunFrame();
+gbRunFrame();
+
+}
+else{
+
+gbRunFrame();
+
+}
 
 }
 
 requestAnimationFrame(loop);
 
 }
-
 
 /* =========================================================
    START
