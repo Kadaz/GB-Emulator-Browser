@@ -5521,8 +5521,1475 @@ gbPPUDrawBackground();
 }
 
 
-/* ========================================================= GAME BOY AUDIO ENGINE ========================================================= */ /* Improved lightweight Game Boy DMG audio engine. CH1 = Square + sweep + envelope CH2 = Square + envelope CH3 = Wave RAM CH4 = LFSR noise + envelope No external core. No WASM. No external dependency. The emulator CPU/PPU/input system remains unchanged. */ const GBAudio={ ctx:null, node:null, enabled:false, sampleRate:44100, /* Persistent audio filters */ dcLeft:0, dcRight:0, filterLeft:0, filterRight:0, /* Envelope state */ envelopeVolume:[0,0,0,0], envelopeTimer:[0,0,0,0], envelopeLastReg:[0,0,0,0], /* CH1 sweep state */ sweepTimer:0, sweepFrequency:0, sweepEnabled:false, sweepLastReg:0, /* Audio buffer timing */ audioTime:0, /* ======================================================= AUDIO START ======================================================= */ start(){ if(this.enabled) return; try{ this.ctx= new( window.AudioContext|| window.webkitAudioContext )(); this.sampleRate= this.ctx.sampleRate||44100; /* 2048 is intentionally retained for Safari compatibility and stable playback. */ this.node= this.ctx.createScriptProcessor( 2048, 0, 2 ); /* Reset filters without losing emulator state */ this.dcLeft=0; this.dcRight=0; this.filterLeft=0; this.filterRight=0; this.audioTime=0; /* Force audio state to match the current Game Boy registers. */ this.syncState(); this.node.onaudioprocess= e=>{ const left= e.outputBuffer.getChannelData(0); const right= e.outputBuffer.getChannelData(1); for( let i=0; i<left.length; i++ ){ const stereo= this.sample(); /* Final master level. Lower than the old engine because the new mixer preserves more channel energy. */ let l= stereo.left*0.18; let r= stereo.right*0.18; /* DC blocker. This removes the small DC offset produced by asymmetric Game Boy waveforms and noise. */ const dcAmount=0.995; this.dcLeft= this.dcLeft*dcAmount+ l; l= l-this.dcLeft*0.004; this.dcRight= this.dcRight*dcAmount+ r; r= r-this.dcRight*0.004; /* Gentle low-pass smoothing. Much lighter than the previous 0.72 filter, so square waves remain crisp. */ this.filterLeft+= (l-this.filterLeft)*0.38; this.filterRight+= (r-this.filterRight)*0.38; /* Soft saturation. Prevents clipping without destroying the Game Boy character. */ l= Math.tanh( this.filterLeft*1.15 ); r= Math.tanh( this.filterRight*1.15 ); left[i]=l; right[i]=r; } }; this.node.connect( this.ctx.destination ); this.enabled=true; if( this.ctx.state==="suspended" ){ this.ctx.resume(); } } catch(e){ console.error( "Game Boy audio failed:", e ); } }, /* ======================================================= SYNCHRONIZE AUDIO STATE ======================================================= */ syncState(){ for( let ch=0; ch<4; ch++ ){ this.envelopeVolume[ch]= this.getInitialVolume(ch); this.envelopeTimer[ch]=0; this.envelopeLastReg[ch]= this.getEnvelopeReg(ch); } this.sweepTimer=0; this.sweepFrequency= this.getFrequency(0); this.sweepEnabled= false; this.sweepLastReg= gbMemory[0xFF10]; }, /* ======================================================= AUDIO STOP ======================================================= */ stop(){ this.enabled=false; if(this.node){ try{ this.node.disconnect(); } catch(e){} this.node=null; } if(this.ctx){ try{ this.ctx.close(); } catch(e){} this.ctx=null; } }, /* ======================================================= REGISTER HELPERS ======================================================= */ getEnvelopeReg(channel){ if(channel===0) return gbMemory[0xFF12]; if(channel===1) return gbMemory[0xFF17]; return gbMemory[0xFF21]; }, getInitialVolume(channel){ const reg= this.getEnvelopeReg(channel); return( reg>>4 )&15; }, getFrequency(channel){ let low; let high; if(channel===0){ low=0xFF13; high=0xFF14; } else if(channel===1){ low=0xFF18; high=0xFF19; } else{ return 0; } return( gbMemory[low]| ( (gbMemory[high]&7)<<8 ) ); }, /* ======================================================= ENVELOPE ======================================================= */ updateEnvelope(channel){ const reg= this.getEnvelopeReg(channel); const initial= (reg>>4)&15; const direction= (reg&8) ? 1 : -1; const period= reg&7; /* A zero envelope period means the volume stays at the initial level. */ if(period===0){ this.envelopeVolume[channel]= initial; this.envelopeTimer[channel]=0; this.envelopeLastReg[channel]=reg; return; } /* If the ROM changed the envelope register, synchronize immediately. */ if( this.envelopeLastReg[channel]!==reg ){ this.envelopeLastReg[channel]=reg; if( this.envelopeVolume[channel]===0 || this.envelopeVolume[channel]>15 ){ this.envelopeVolume[channel]= initial; } } /* Envelope timing is 64 Hz. We advance it using real audio time rather than pretending that one audio sample is one Game Boy CPU tick. */ const secondsPerStep= period/64; this.envelopeTimer[channel]+= 1/this.sampleRate; if( this.envelopeTimer[channel]>= secondsPerStep ){ this.envelopeTimer[channel]-= secondsPerStep; let v= this.envelopeVolume[channel]; v+=direction; if(v<0) v=0; if(v>15) v=15; this.envelopeVolume[channel]=v; } }, /* ======================================================= GAME BOY SQUARE CHANNEL ======================================================= */ square(channel){ const dutyReg= channel===0 ? 0xFF11 : 0xFF16; const volumeReg= channel===0 ? 0xFF12 : 0xFF17; const period= this.getFrequency(channel); if( period>=2048 ) return 0; const frequency= 131072/ (2048-period); if( frequency<=0 || frequency>20000 ) return 0; /* Update envelope. */ this.updateEnvelope(channel); const volume= this.envelopeVolume[channel]; if(volume<=0) return 0; /* Four real Game Boy duty patterns. We use an 8-step representation because it keeps the waveform stable and cheap. */ const duty= (gbMemory[dutyReg]>>6)&3; const dutyTables=[ /* 12.5% */ [ 1,0,0,0, 0,0,0,0 ], /* 25% */ [ 1,1,0,0, 0,0,0,0 ], /* 50% */ [ 1,1,1,1, 0,0,0,0 ], /* 75% */ [ 0,0,0,0, 1,1,1,1 ] ]; const phase= gbAPU.phase[channel]; gbAPU.phase[channel]+= frequency/ this.sampleRate; while( gbAPU.phase[channel]>=1 ){ gbAPU.phase[channel]-=1; } const step= Math.floor( phase*8 )&7; const high= dutyTables[duty][step]; /* Slightly softer than a mathematically perfect +/-1 square wave. */ return( high ? 0.92 : -0.92 )* (volume/15); }, /* ======================================================= GAME BOY WAVE CHANNEL ======================================================= */ wave(){ const nr30= gbMemory[0xFF1A]; /* DAC disabled. */ if(!(nr30&0x80)) return 0; const period= gbMemory[0xFF1D]| ( (gbMemory[0xFF1E]&7)<<8 ); if( period>=2048 ) return 0; const level= (gbMemory[0xFF1C]>>5)&3; if(level===0) return 0; const frequency= 65536/ (2048-period); const phase= gbAPU.phase[2]; gbAPU.phase[2]+= frequency/ this.sampleRate; while( gbAPU.phase[2]>=1 ){ gbAPU.phase[2]-=1; } /* 32 four-bit wave samples. */ const sampleIndex= Math.floor( phase*32 )&31; const byte= gbMemory[ 0xFF30+ (sampleIndex>>1) ]; let value; if(sampleIndex&1) value= byte&0x0F; else value= byte>>4; let out= (value-7.5)/7.5; /* NR32 volume: 00 = mute 01 = 100% 10 = 50% 11 = 25% */ if(level===2) out*=0.50; else if(level===3) out*=0.25; return out*0.92; }, /* ======================================================= GAME BOY NOISE CHANNEL ======================================================= */ noise(){ const volumeReg= gbMemory[0xFF21]; const nr43= gbMemory[0xFF22]; const initial= (volumeReg>>4)&15; if(initial===0) return 0; /* Envelope. */ this.updateEnvelope(3); const volume= this.envelopeVolume[3]; if(volume<=0) return 0; /* Noise divisor. */ const shift= (nr43>>4)&15; if(shift>=14) return 0; const dividerCode= nr43&7; const divisors=[ 8, 16, 32, 48, 64, 80, 96, 112 ]; const divisor= divisors[dividerCode]; /* DMG noise frequency. */ const frequency= 262144/ ( divisor* Math.pow(2,shift) ); if( frequency<=0 ) return 0; /* Advance LFSR. */ gbAPU.noisePhase+= frequency/ this.sampleRate; while( gbAPU.noisePhase>=1 ){ gbAPU.noisePhase-=1; const bit= ( gbAPU.noiseLFSR^ (gbAPU.noiseLFSR>>1) )&1; gbAPU.noiseLFSR= ( gbAPU.noiseLFSR>>1 )| (bit<<14); /* 7-bit noise mode. */ if(nr43&8){ gbAPU.noiseLFSR= ( gbAPU.noiseLFSR&~0x40 )| (bit<<6); } } const output= ( gbAPU.noiseLFSR&1 ) ? -1 : 1; return( output* 0.92* (volume/15) ); }, /* ======================================================= CH1 FREQUENCY SWEEP ======================================================= */ getSweepFrequency(){ let frequency= this.sweepFrequency; if( frequency<=0 || frequency>=2048 ){ frequency= this.getFrequency(0); } return frequency; }, updateSweep(){ const nr10= gbMemory[0xFF10]; const period= (nr10>>4)&7; const direction= (nr10&8) ? -1 : 1; const shift= nr10&7; /* No sweep period means no audible sweep movement. */ if(period===0){ this.sweepTimer=0; return; } this.sweepTimer+= 1/this.sampleRate; if( this.sweepTimer< period/128 ) return; this.sweepTimer=0; if(shift===0) return; let frequency= this.getSweepFrequency(); const delta= frequency>>shift; frequency+= delta*direction; /* Overflow disables channel 1. */ if( frequency>=2048 || frequency<0 ){ gbAPU.active[0]=0; return; } this.sweepFrequency= frequency; /* The calculated sweep frequency is used by CH1 without changing the ROM's register. */ }, /* ======================================================= CH1 WITH SWEEP ======================================================= */ square1(){ this.updateSweep(); let frequency= this.getSweepFrequency(); if( frequency>=2048 || frequency<=0 ) return 0; /* Channel 1 envelope. */ this.updateEnvelope(0); const volume= this.envelopeVolume[0]; if(volume<=0) return 0; const duty= (gbMemory[0xFF11]>>6)&3; const dutyTables=[ [1,0,0,0,0,0,0,0], [1,1,0,0,0,0,0,0], [1,1,1,1,0,0,0,0], [0,0,0,0,1,1,1,1] ]; const phase= gbAPU.phase[0]; const hz= 131072/ (2048-frequency); gbAPU.phase[0]+= hz/ this.sampleRate; while( gbAPU.phase[0]>=1 ){ gbAPU.phase[0]-=1; } const step= Math.floor( phase*8 )&7; return( dutyTables[duty][step] ? 0.92 : -0.92 )* (volume/15); }, /* ======================================================= MIXER ======================================================= */ sample(){ if(!sound) return{ left:0, right:0 }; if( !(gbMemory[0xFF26]&0x80) ){ return{ left:0, right:0 }; } /* CH1 */ let ch1=0; if( gbAPU.active[0] && (gbMemory[0xFF12]&0xF8) ){ ch1= this.square1(); } /* CH2 */ let ch2=0; if( gbAPU.active[1] && (gbMemory[0xFF17]&0xF8) ){ ch2= this.square(1); } /* CH3 */ let ch3=0; if( gbAPU.active[2] && (gbMemory[0xFF1A]&0x80) ){ ch3= this.wave(); } /* CH4 */ let ch4=0; if( gbAPU.active[3] && (gbMemory[0xFF21]&0xF8) ){ ch4= this.noise(); } const channels=[ ch1, ch2, ch3, ch4 ]; /* NR51 stereo routing. */ const nr51= gbMemory[0xFF25]; let left=0; let right=0; if(nr51&0x10) left+=ch1; if(nr51&0x01) right+=ch1; if(nr51&0x20) left+=ch2; if(nr51&0x02) right+=ch2; if(nr51&0x40) left+=ch3; if(nr51&0x04) right+=ch3; if(nr51&0x80) left+=ch4; if(nr51&0x08) right+=ch4; /* If no stereo routing is configured, retain a safe mono fallback. */ if( nr51===0 ){ left= ( ch1+ ch2+ ch3+ ch4 )/4; right=left; } /* NR50 master volume. */ const nr50= gbMemory[0xFF24]; const leftVolume= ((nr50>>4)&7)+1; const rightVolume= (nr50&7)+1; left= ( left* leftVolume )/8; right= ( right* rightVolume )/8; /* Normalize according to the number of simultaneously active channels. This prevents the classic "four channels = suddenly much louder" problem. */ let activeCount=0; for(const v of channels){ if(Math.abs(v)>0.0001) activeCount++; } if(activeCount>1){ const normalization= 1/ Math.sqrt(activeCount); left*=normalization; right*=normalization; } /* Mild stereo widening. Very small on purpose: Game Boy audio should still sound like Game Boy audio. */ const mid= (left+right)*0.5; const side= (left-right)*0.18; left= mid+side; right= mid-side; return{ left, right }; } };
+/* =========================================================
+   GAME BOY AUDIO ENGINE
+========================================================= */
 
+/*
+   Improved lightweight Game Boy DMG audio engine.
+
+   CH1 = Square + sweep + envelope
+   CH2 = Square + envelope
+   CH3 = Wave RAM
+   CH4 = LFSR noise + envelope
+
+   No external core.
+   No WASM.
+   No external dependency.
+
+   The emulator CPU / PPU / input system remains unchanged.
+*/
+
+const GBAudio={
+
+ctx:null,
+node:null,
+enabled:false,
+
+sampleRate:44100,
+
+/* Persistent output filter state */
+dcLeft:0,
+dcRight:0,
+
+filterLeft:0,
+filterRight:0,
+
+/* Envelope state */
+envelopeVolume:[0,0,0,0],
+envelopeTimer:[0,0,0,0],
+envelopeLastReg:[0,0,0,0],
+
+/* CH1 sweep state */
+sweepTimer:0,
+sweepFrequency:0,
+sweepEnabled:false,
+sweepLastReg:0,
+
+/* Audio timing */
+audioTime:0,
+
+/* =========================================================
+   AUDIO START
+========================================================= */
+
+start(){
+
+if(this.enabled)
+return;
+
+try{
+
+this.ctx=
+new(
+window.AudioContext||
+window.webkitAudioContext
+)();
+
+this.sampleRate=
+this.ctx.sampleRate||44100;
+
+
+/*
+   Smaller callback than before.
+
+   This is especially useful for short Game Boy effects
+   because the audio system gets serviced more frequently.
+*/
+
+this.node=
+this.ctx.createScriptProcessor(
+1024,
+0,
+2
+);
+
+
+/* Reset output state */
+
+this.dcLeft=0;
+this.dcRight=0;
+
+this.filterLeft=0;
+this.filterRight=0;
+
+this.audioTime=0;
+
+
+/* Synchronize with current GB registers */
+
+this.syncState();
+
+
+this.node.onaudioprocess=e=>{
+
+const left=
+e.outputBuffer.getChannelData(0);
+
+const right=
+e.outputBuffer.getChannelData(1);
+
+
+for(
+let i=0;
+i<left.length;
+i++
+){
+
+const stereo=
+this.sample();
+
+
+/*
+   Stronger level than the previous version.
+
+   Short effects should remain audible.
+*/
+
+let l=
+stereo.left*0.27;
+
+let r=
+stereo.right*0.27;
+
+
+/*
+   Gentle Game Boy-style high-pass / DC removal.
+
+   This is intentionally very light.
+*/
+
+const dcAmount=0.996;
+
+this.dcLeft=
+this.dcLeft*dcAmount+l;
+
+l-=
+this.dcLeft*0.004;
+
+
+this.dcRight=
+this.dcRight*dcAmount+r;
+
+r-=
+this.dcRight*0.004;
+
+
+/*
+   Very light smoothing.
+
+   The previous engine filtered too much of the
+   high-frequency content from short effects.
+*/
+
+this.filterLeft+=
+(l-this.filterLeft)*0.55;
+
+this.filterRight+=
+(r-this.filterRight)*0.55;
+
+
+/*
+   Very soft saturation.
+
+   Only protects against occasional peaks.
+*/
+
+l=
+Math.tanh(
+this.filterLeft*1.05
+);
+
+r=
+Math.tanh(
+this.filterRight*1.05
+);
+
+
+left[i]=l;
+right[i]=r;
+
+}
+
+};
+
+
+this.node.connect(
+this.ctx.destination
+);
+
+this.enabled=true;
+
+
+if(
+this.ctx.state==="suspended"
+){
+
+this.ctx.resume();
+
+}
+
+}
+catch(e){
+
+console.error(
+"Game Boy audio failed:",
+e
+);
+
+}
+
+},
+
+
+/* =========================================================
+   SYNCHRONIZE AUDIO STATE
+========================================================= */
+
+syncState(){
+
+for(
+let ch=0;
+ch<4;
+ch++
+){
+
+this.envelopeVolume[ch]=
+this.getInitialVolume(ch);
+
+this.envelopeTimer[ch]=0;
+
+this.envelopeLastReg[ch]=
+this.getEnvelopeReg(ch);
+
+}
+
+
+this.sweepTimer=0;
+
+this.sweepFrequency=
+this.getFrequency(0);
+
+this.sweepEnabled=false;
+
+this.sweepLastReg=
+gbMemory[0xFF10];
+
+},
+
+
+/* =========================================================
+   AUDIO STOP
+========================================================= */
+
+stop(){
+
+this.enabled=false;
+
+
+if(this.node){
+
+try{
+
+this.node.disconnect();
+
+}
+catch(e){}
+
+this.node=null;
+
+}
+
+
+if(this.ctx){
+
+try{
+
+this.ctx.close();
+
+}
+catch(e){}
+
+this.ctx=null;
+
+}
+
+},
+
+
+/* =========================================================
+   REGISTER HELPERS
+========================================================= */
+
+getEnvelopeReg(channel){
+
+if(channel===0)
+return gbMemory[0xFF12];
+
+if(channel===1)
+return gbMemory[0xFF17];
+
+return gbMemory[0xFF21];
+
+},
+
+
+getInitialVolume(channel){
+
+const reg=
+this.getEnvelopeReg(channel);
+
+return(
+reg>>4
+)&15;
+
+},
+
+
+getFrequency(channel){
+
+let low;
+let high;
+
+
+if(channel===0){
+
+low=0xFF13;
+high=0xFF14;
+
+}
+else
+if(channel===1){
+
+low=0xFF18;
+high=0xFF19;
+
+}
+else{
+
+return 0;
+
+}
+
+
+return(
+gbMemory[low]|
+(
+(gbMemory[high]&7)<<8
+)
+);
+
+},
+
+
+/* =========================================================
+   ENVELOPE
+========================================================= */
+
+updateEnvelope(channel){
+
+const reg=
+this.getEnvelopeReg(channel);
+
+const initial=
+(reg>>4)&15;
+
+const direction=
+(reg&8)
+?
+1
+:
+-1;
+
+const period=
+reg&7;
+
+
+/*
+   Period 0 = no envelope movement.
+*/
+
+if(period===0){
+
+this.envelopeVolume[channel]=
+initial;
+
+this.envelopeTimer[channel]=0;
+
+this.envelopeLastReg[channel]=
+reg;
+
+return;
+
+}
+
+
+/*
+   Detect a register change.
+
+   Do not unnecessarily destroy the current volume.
+*/
+
+if(
+this.envelopeLastReg[channel]!==reg
+){
+
+this.envelopeLastReg[channel]=
+reg;
+
+if(
+this.envelopeVolume[channel]<0 ||
+this.envelopeVolume[channel]>15
+){
+
+this.envelopeVolume[channel]=
+initial;
+
+}
+
+}
+
+
+/*
+   Real Game Boy envelope rate:
+   64 Hz / period.
+
+   We advance using real audio sample time.
+*/
+
+const secondsPerStep=
+period/64;
+
+this.envelopeTimer[channel]+=
+1/this.sampleRate;
+
+
+while(
+this.envelopeTimer[channel]>=
+secondsPerStep
+){
+
+this.envelopeTimer[channel]-=
+secondsPerStep;
+
+let v=
+this.envelopeVolume[channel];
+
+v+=direction;
+
+if(v<0)
+v=0;
+
+if(v>15)
+v=15;
+
+this.envelopeVolume[channel]=v;
+
+}
+
+},
+
+
+/* =========================================================
+   DUTY TABLE
+========================================================= */
+
+dutyTable:[
+
+/* 12.5% */
+[
+1,0,0,0,
+0,0,0,0
+],
+
+/* 25% */
+[
+1,1,0,0,
+0,0,0,0
+],
+
+/* 50% */
+[
+1,1,1,1,
+0,0,0,0
+],
+
+/* 75% */
+[
+0,0,0,0,
+1,1,1,1
+]
+
+],
+
+
+/* =========================================================
+   GAME BOY SQUARE CHANNEL 2
+========================================================= */
+
+square(channel){
+
+const dutyReg=
+channel===0
+?
+0xFF11
+:
+0xFF16;
+
+const period=
+this.getFrequency(channel);
+
+
+if(
+period>=2048
+)
+return 0;
+
+
+const frequency=
+131072/
+(
+2048-period
+);
+
+
+if(
+frequency<=0 ||
+frequency>20000
+)
+return 0;
+
+
+/* Envelope */
+
+this.updateEnvelope(channel);
+
+
+const volume=
+this.envelopeVolume[channel];
+
+
+if(volume<=0)
+return 0;
+
+
+const duty=
+(
+gbMemory[dutyReg]>>6
+)&3;
+
+
+const phase=
+gbAPU.phase[channel];
+
+
+gbAPU.phase[channel]+=
+frequency/
+this.sampleRate;
+
+
+while(
+gbAPU.phase[channel]>=1
+){
+
+gbAPU.phase[channel]-=1;
+
+}
+
+
+const step=
+Math.floor(
+phase*8
+)&7;
+
+
+const high=
+this.dutyTable[duty][step];
+
+
+return(
+high
+?
+0.95
+:
+-0.95
+)*
+(volume/15);
+
+},
+
+
+/* =========================================================
+   GAME BOY WAVE CHANNEL 3
+========================================================= */
+
+wave(){
+
+const nr30=
+gbMemory[0xFF1A];
+
+
+/* DAC disabled */
+
+if(!(nr30&0x80))
+return 0;
+
+
+const period=
+gbMemory[0xFF1D]|
+(
+(gbMemory[0xFF1E]&7)<<8
+);
+
+
+if(
+period>=2048
+)
+return 0;
+
+
+const level=
+(
+gbMemory[0xFF1C]>>5
+)&3;
+
+
+if(level===0)
+return 0;
+
+
+const frequency=
+65536/
+(
+2048-period
+);
+
+
+const phase=
+gbAPU.phase[2];
+
+
+gbAPU.phase[2]+=
+frequency/
+this.sampleRate;
+
+
+while(
+gbAPU.phase[2]>=1
+){
+
+gbAPU.phase[2]-=1;
+
+}
+
+
+const sampleIndex=
+Math.floor(
+phase*32
+)&31;
+
+
+const byte=
+gbMemory[
+0xFF30+
+(sampleIndex>>1)
+];
+
+
+let value;
+
+
+if(
+sampleIndex&1
+){
+
+value=
+byte&0x0F;
+
+}
+else{
+
+value=
+byte>>4;
+
+}
+
+
+let out=
+(value-7.5)/7.5;
+
+
+/*
+   NR32 volume:
+   00 = mute
+   01 = 100%
+   10 = 50%
+   11 = 25%
+*/
+
+if(level===2)
+out*=0.50;
+
+else
+if(level===3)
+out*=0.25;
+
+
+return out*0.95;
+
+},
+
+
+/* =========================================================
+   GAME BOY NOISE CHANNEL 4
+========================================================= */
+
+noise(){
+
+const volumeReg=
+gbMemory[0xFF21];
+
+const nr43=
+gbMemory[0xFF22];
+
+const initial=
+(volumeReg>>4)&15;
+
+
+if(initial===0)
+return 0;
+
+
+/* Envelope */
+
+this.updateEnvelope(3);
+
+
+const volume=
+this.envelopeVolume[3];
+
+
+if(volume<=0)
+return 0;
+
+
+/*
+   NR43:
+   bits 4-7 = clock shift
+   bit 3    = 7/15 bit mode
+   bits 0-2 = divisor
+*/
+
+const shift=
+(nr43>>4)&15;
+
+
+/*
+   Extremely high shift values produce no useful
+   audible noise in this lightweight implementation.
+*/
+
+if(shift>=14)
+return 0;
+
+
+const dividerCode=
+nr43&7;
+
+
+const divisors=[
+8,
+16,
+32,
+48,
+64,
+80,
+96,
+112
+];
+
+
+const divisor=
+divisors[dividerCode];
+
+
+const frequency=
+262144/
+(
+divisor*
+Math.pow(2,shift)
+);
+
+
+if(frequency<=0)
+return 0;
+
+
+/* Advance LFSR */
+
+gbAPU.noisePhase+=
+frequency/
+this.sampleRate;
+
+
+while(
+gbAPU.noisePhase>=1
+){
+
+gbAPU.noisePhase-=1;
+
+
+const bit=
+(
+gbAPU.noiseLFSR^
+(gbAPU.noiseLFSR>>1)
+)&1;
+
+
+gbAPU.noiseLFSR=
+(
+gbAPU.noiseLFSR>>1
+)|
+(bit<<14);
+
+
+/*
+   7-bit mode.
+*/
+
+if(nr43&8){
+
+gbAPU.noiseLFSR=
+(
+gbAPU.noiseLFSR&~0x40
+)|
+(bit<<6);
+
+}
+
+}
+
+
+const output=
+(
+gbAPU.noiseLFSR&1
+)
+?
+-1
+:
+1;
+
+
+return(
+output*
+0.95*
+(volume/15)
+);
+
+},
+
+
+/* =========================================================
+   CH1 SWEEP
+========================================================= */
+
+getSweepFrequency(){
+
+let frequency=
+this.sweepFrequency;
+
+
+if(
+frequency<=0 ||
+frequency>=2048
+){
+
+frequency=
+this.getFrequency(0);
+
+}
+
+
+return frequency;
+
+},
+
+
+updateSweep(){
+
+const nr10=
+gbMemory[0xFF10];
+
+
+const period=
+(nr10>>4)&7;
+
+
+const direction=
+(nr10&8)
+?
+-1
+:
+1;
+
+
+const shift=
+nr10&7;
+
+
+/*
+   Sweep period 0 is treated as an 8-step period
+   by real Game Boy hardware.
+
+   This gives short effects a much more natural sweep.
+*/
+
+const effectivePeriod=
+period===0
+?
+8
+:
+period;
+
+
+if(shift===0){
+
+this.sweepTimer+=
+1/this.sampleRate;
+
+if(
+this.sweepTimer>=
+effectivePeriod/128
+){
+
+this.sweepTimer=0;
+
+}
+
+return;
+
+}
+
+
+this.sweepTimer+=
+1/this.sampleRate;
+
+
+if(
+this.sweepTimer<
+effectivePeriod/128
+)
+return;
+
+
+this.sweepTimer-=
+effectivePeriod/128;
+
+
+let frequency=
+this.getSweepFrequency();
+
+
+const delta=
+frequency>>shift;
+
+
+frequency+=
+delta*direction;
+
+
+/*
+   Hardware overflow disables CH1.
+*/
+
+if(
+frequency>=2048 ||
+frequency<0
+){
+
+gbAPU.active[0]=0;
+
+return;
+
+}
+
+
+this.sweepFrequency=
+frequency;
+
+},
+
+
+/* =========================================================
+   CH1 WITH SWEEP
+========================================================= */
+
+square1(){
+
+this.updateSweep();
+
+
+let frequency=
+this.getSweepFrequency();
+
+
+if(
+frequency>=2048 ||
+frequency<=0
+)
+return 0;
+
+
+this.updateEnvelope(0);
+
+
+const volume=
+this.envelopeVolume[0];
+
+
+if(volume<=0)
+return 0;
+
+
+const duty=
+(
+gbMemory[0xFF11]>>6
+)&3;
+
+
+const phase=
+gbAPU.phase[0];
+
+
+const hz=
+131072/
+(
+2048-frequency
+);
+
+
+gbAPU.phase[0]+=
+hz/
+this.sampleRate;
+
+
+while(
+gbAPU.phase[0]>=1
+){
+
+gbAPU.phase[0]-=1;
+
+}
+
+
+const step=
+Math.floor(
+phase*8
+)&7;
+
+
+const value=
+this.dutyTable[duty][step]
+?
+0.95
+:
+-0.95;
+
+
+return value*
+(volume/15);
+
+},
+
+
+/* =========================================================
+   MIXER
+========================================================= */
+
+sample(){
+
+if(!sound){
+
+return{
+left:0,
+right:0
+};
+
+}
+
+
+/*
+   NR52 master power.
+*/
+
+if(
+!(gbMemory[0xFF26]&0x80)
+){
+
+return{
+left:0,
+right:0
+};
+
+}
+
+
+/* CH1 */
+
+let ch1=0;
+
+if(
+gbAPU.active[0] &&
+(gbMemory[0xFF12]&0xF8)
+){
+
+ch1=
+this.square1();
+
+}
+
+
+/* CH2 */
+
+let ch2=0;
+
+if(
+gbAPU.active[1] &&
+(gbMemory[0xFF17]&0xF8)
+){
+
+ch2=
+this.square(1);
+
+}
+
+
+/* CH3 */
+
+let ch3=0;
+
+if(
+gbAPU.active[2] &&
+(gbMemory[0xFF1A]&0x80)
+){
+
+ch3=
+this.wave();
+
+}
+
+
+/* CH4 */
+
+let ch4=0;
+
+if(
+gbAPU.active[3] &&
+(gbMemory[0xFF21]&0xF8)
+){
+
+ch4=
+this.noise();
+
+}
+
+
+const channels=[
+ch1,
+ch2,
+ch3,
+ch4
+];
+
+
+/*
+   NR51 stereo routing.
+*/
+
+const nr51=
+gbMemory[0xFF25];
+
+let left=0;
+let right=0;
+
+
+if(nr51&0x10)
+left+=ch1;
+
+if(nr51&0x01)
+right+=ch1;
+
+
+if(nr51&0x20)
+left+=ch2;
+
+if(nr51&0x02)
+right+=ch2;
+
+
+if(nr51&0x40)
+left+=ch3;
+
+if(nr51&0x04)
+right+=ch3;
+
+
+if(nr51&0x80)
+left+=ch4;
+
+if(nr51&0x08)
+right+=ch4;
+
+
+/*
+   Safe mono fallback.
+*/
+
+if(nr51===0){
+
+left=
+(
+ch1+
+ch2+
+ch3+
+ch4
+)/4;
+
+right=
+left;
+
+}
+
+
+/*
+   NR50 master volume.
+
+   Do NOT normalize by active channel count.
+
+   That normalization was one of the things that made
+   short effects disappear or become unnaturally quiet.
+*/
+
+const nr50=
+gbMemory[0xFF24];
+
+
+const leftVolume=
+((nr50>>4)&7)+1;
+
+
+const rightVolume=
+(nr50&7)+1;
+
+
+left=
+(
+left*
+leftVolume
+)/8;
+
+
+right=
+(
+right*
+rightVolume
+)/8;
+
+
+/*
+   Very small stereo separation.
+
+   Keep the original Game Boy character.
+*/
+
+const mid=
+(left+right)*0.5;
+
+const side=
+(left-right)*0.10;
+
+
+left=
+mid+side;
+
+right=
+mid-side;
+
+
+return{
+left,
+right
+};
+
+}
+
+};
+
+
+/* =========================================================
+   AUDIO TRIGGER SYNCHRONIZATION
+========================================================= */
+
+/*
+   The CPU can write several APU trigger registers while the
+   JavaScript audio callback is busy.
+
+   We therefore make sure every trigger immediately resets
+   the corresponding oscillator state.
+
+   This wrapper stays completely inside the audio section,
+   so no other emulator code has to be changed.
+*/
+
+const gbOriginalAPUWrite=
+gbAPUWrite;
+
+
+gbAPUWrite=function(addr,value){
+
+gbOriginalAPUWrite(
+addr,
+value
+);
+
+
+/* CH1 */
+
+if(
+addr===0xFF14 &&
+(value&0x80)
+){
+
+if(
+gbMemory[0xFF12]&0xF8
+){
+
+gbAPU.active[0]=1;
+
+gbAPU.phase[0]=0;
+
+
+GBAudio.envelopeVolume[0]=
+(
+gbMemory[0xFF12]>>4
+)&15;
+
+GBAudio.envelopeTimer[0]=0;
+
+GBAudio.envelopeLastReg[0]=
+gbMemory[0xFF12];
+
+
+GBAudio.sweepFrequency=
+gbMemory[0xFF13]|
+(
+(gbMemory[0xFF14]&7)<<8
+);
+
+GBAudio.sweepTimer=0;
+
+GBAudio.sweepEnabled=
+(
+(gbMemory[0xFF10]>>4)&7
+)!==0;
+
+GBAudio.sweepLastReg=
+gbMemory[0xFF10];
+
+}
+
+}
+
+
+/* CH2 */
+
+if(
+addr===0xFF19 &&
+(value&0x80)
+){
+
+if(
+gbMemory[0xFF17]&0xF8
+){
+
+gbAPU.active[1]=1;
+
+gbAPU.phase[1]=0;
+
+
+GBAudio.envelopeVolume[1]=
+(
+gbMemory[0xFF17]>>4
+)&15;
+
+GBAudio.envelopeTimer[1]=0;
+
+GBAudio.envelopeLastReg[1]=
+gbMemory[0xFF17];
+
+}
+
+}
+
+
+/* CH3 */
+
+if(
+addr===0xFF1E &&
+(value&0x80)
+){
+
+if(
+gbMemory[0xFF1A]&0x80
+){
+
+gbAPU.active[2]=1;
+
+gbAPU.phase[2]=0;
+
+}
+
+}
+
+
+/* CH4 */
+
+if(
+addr===0xFF23 &&
+(value&0x80)
+){
+
+if(
+gbMemory[0xFF21]&0xF8
+){
+
+gbAPU.active[3]=1;
+
+gbAPU.noisePhase=0;
+
+gbAPU.noiseLFSR=0x7FFF;
+
+
+GBAudio.envelopeVolume[3]=
+(
+gbMemory[0xFF21]>>4
+)&15;
+
+GBAudio.envelopeTimer[3]=0;
+
+GBAudio.envelopeLastReg[3]=
+gbMemory[0xFF21];
+
+}
+
+}
+
+};
+
+
+/* =========================================================
+   END GAME BOY AUDIO ENGINE
+========================================================= */
 /* =========================================================
    ROM LOADING
 ========================================================= */
