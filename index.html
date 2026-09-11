@@ -201,7 +201,15 @@ SOUND
 
 <button id="speed">
 SPEED 1X
-</button>      
+</button>
+
+<button id="save">
+SAVE
+</button>
+
+<button id="load">
+LOAD
+</button>   
 
 </span>
 
@@ -6371,6 +6379,540 @@ romFile.value="";
 }
 );
 
+/* =========================================================
+   SAVE / LOAD STATE
+========================================================= */
+
+function gbBytesToBase64(bytes){
+
+let binary="";
+
+const chunk=0x8000;
+
+for(
+let i=0;
+i<bytes.length;
+i+=chunk
+){
+
+const end=
+Math.min(
+i+chunk,
+bytes.length
+);
+
+for(
+let j=i;
+j<end;
+j++
+){
+
+binary+=
+String.fromCharCode(
+bytes[j]
+);
+
+}
+
+}
+
+return btoa(binary);
+
+}
+
+
+function gbBase64ToBytes(base64){
+
+const binary=
+atob(base64);
+
+const bytes=
+new Uint8Array(
+binary.length
+);
+
+for(
+let i=0;
+i<binary.length;
+i++
+){
+
+bytes[i]=
+binary.charCodeAt(i);
+
+}
+
+return bytes;
+
+}
+
+
+function gbSaveState(){
+
+if(!gbROMLoaded || !gbROM){
+
+alert(
+"Load a Game Boy ROM first."
+);
+
+return;
+
+}
+
+try{
+
+const state={
+
+version:1,
+
+romSize:
+gbROM.length,
+
+/* CPU */
+
+cpu:{
+a:gbCPU.a,
+f:gbCPU.f,
+b:gbCPU.b,
+c:gbCPU.c,
+d:gbCPU.d,
+e:gbCPU.e,
+h:gbCPU.h,
+l:gbCPU.l,
+sp:gbCPU.sp,
+pc:gbCPU.pc,
+halted:gbCPU.halted,
+stopped:gbCPU.stopped,
+ime:gbCPU.ime,
+imeDelay:gbCPU.imeDelay
+},
+
+/* Main memory */
+
+memory:
+gbBytesToBase64(
+gbMemory
+),
+
+/* Video memory */
+
+vram:
+gbBytesToBase64(
+gbVRAM
+),
+
+/* Sprite memory */
+
+oam:
+gbBytesToBase64(
+gbOAM
+),
+
+/* Cartridge RAM */
+
+cartridgeRAM:
+gbBytesToBase64(
+gbCartridge.ram
+),
+
+/* Cartridge */
+
+cartridge:{
+romBank:gbCartridge.romBank,
+ramBank:gbCartridge.ramBank,
+ramEnabled:gbCartridge.ramEnabled,
+bankingMode:gbCartridge.bankingMode,
+mbcType:gbCartridge.mbcType
+},
+
+/* PPU */
+
+ppu:{
+lcdc:gbPPU.lcdc,
+stat:gbPPU.stat,
+scy:gbPPU.scy,
+scx:gbPPU.scx,
+lyc:gbPPU.lyc,
+bgp:gbPPU.bgp,
+obp0:gbPPU.obp0,
+obp1:gbPPU.obp1,
+wy:gbPPU.wy,
+wx:gbPPU.wx,
+ly:gbPPU.ly,
+cycles:gbPPU.cycles,
+mode:gbPPU.mode,
+statIRQLine:gbPPU.statIRQLine,
+
+lineSCX:
+gbBytesToBase64(
+gbPPU.lineSCX
+),
+
+lineSCY:
+gbBytesToBase64(
+gbPPU.lineSCY
+)
+},
+
+/* Timer */
+
+timer:{
+div:gbTimer.div,
+tima:gbTimer.tima,
+tma:gbTimer.tma,
+tac:gbTimer.tac,
+counter:gbTimer.counter
+},
+
+/* APU */
+
+apu:{
+active:[
+...gbAPU.active
+],
+
+phase:[
+...gbAPU.phase
+],
+
+noisePhase:
+gbAPU.noisePhase,
+
+noiseLFSR:
+gbAPU.noiseLFSR
+},
+
+/* Joypad */
+
+joypad:{
+A:gbJoypad.A,
+B:gbJoypad.B,
+SELECT:gbJoypad.SELECT,
+START:gbJoypad.START,
+UP:gbJoypad.UP,
+DOWN:gbJoypad.DOWN,
+LEFT:gbJoypad.LEFT,
+RIGHT:gbJoypad.RIGHT,
+selectButtons:
+gbJoypad.selectButtons,
+selectDpad:
+gbJoypad.selectDpad
+}
+
+};
+
+
+localStorage.setItem(
+"retro_land_gb_save",
+JSON.stringify(state)
+);
+
+alert(
+"Game saved."
+);
+
+console.log(
+"Game Boy save state created."
+);
+
+}
+catch(e){
+
+console.error(
+"Save state failed:",
+e
+);
+
+alert(
+"Could not save the game."
+);
+
+}
+
+}
+
+
+function gbLoadState(){
+
+if(!gbROMLoaded || !gbROM){
+
+alert(
+"Load a Game Boy ROM first."
+);
+
+return;
+
+}
+
+try{
+
+const raw=
+localStorage.getItem(
+"retro_land_gb_save"
+);
+
+if(!raw){
+
+alert(
+"No saved game found."
+);
+
+return;
+
+}
+
+const state=
+JSON.parse(raw);
+
+
+/* Make sure the save belongs to
+   a compatible ROM size */
+
+if(
+state.romSize!==gbROM.length
+){
+
+alert(
+"This save belongs to a different ROM."
+);
+
+return;
+
+}
+
+
+/* CPU */
+
+gbCPU.a=state.cpu.a;
+gbCPU.f=state.cpu.f;
+gbCPU.b=state.cpu.b;
+gbCPU.c=state.cpu.c;
+gbCPU.d=state.cpu.d;
+gbCPU.e=state.cpu.e;
+gbCPU.h=state.cpu.h;
+gbCPU.l=state.cpu.l;
+gbCPU.sp=state.cpu.sp;
+gbCPU.pc=state.cpu.pc;
+gbCPU.halted=state.cpu.halted;
+gbCPU.stopped=state.cpu.stopped;
+gbCPU.ime=state.cpu.ime;
+gbCPU.imeDelay=state.cpu.imeDelay;
+
+
+/* Memory */
+
+gbMemory.set(
+gbBase64ToBytes(
+state.memory
+)
+);
+
+
+/* VRAM */
+
+gbVRAM.set(
+gbBase64ToBytes(
+state.vram
+)
+);
+
+
+/* OAM */
+
+gbOAM.set(
+gbBase64ToBytes(
+state.oam
+)
+);
+
+
+/* Cartridge RAM */
+
+gbCartridge.ram.set(
+gbBase64ToBytes(
+state.cartridgeRAM
+)
+);
+
+
+/* Cartridge */
+
+gbCartridge.romBank=
+state.cartridge.romBank;
+
+gbCartridge.ramBank=
+state.cartridge.ramBank;
+
+gbCartridge.ramEnabled=
+state.cartridge.ramEnabled;
+
+gbCartridge.bankingMode=
+state.cartridge.bankingMode;
+
+gbCartridge.mbcType=
+state.cartridge.mbcType;
+
+
+/* PPU */
+
+gbPPU.lcdc=
+state.ppu.lcdc;
+
+gbPPU.stat=
+state.ppu.stat;
+
+gbPPU.scy=
+state.ppu.scy;
+
+gbPPU.scx=
+state.ppu.scx;
+
+gbPPU.lyc=
+state.ppu.lyc;
+
+gbPPU.bgp=
+state.ppu.bgp;
+
+gbPPU.obp0=
+state.ppu.obp0;
+
+gbPPU.obp1=
+state.ppu.obp1;
+
+gbPPU.wy=
+state.ppu.wy;
+
+gbPPU.wx=
+state.ppu.wx;
+
+gbPPU.ly=
+state.ppu.ly;
+
+gbPPU.cycles=
+state.ppu.cycles;
+
+gbPPU.mode=
+state.ppu.mode;
+
+gbPPU.statIRQLine=
+state.ppu.statIRQLine;
+
+gbPPU.lineSCX.set(
+gbBase64ToBytes(
+state.ppu.lineSCX
+)
+);
+
+gbPPU.lineSCY.set(
+gbBase64ToBytes(
+state.ppu.lineSCY
+)
+);
+
+
+/* Timer */
+
+gbTimer.div=
+state.timer.div;
+
+gbTimer.tima=
+state.timer.tima;
+
+gbTimer.tma=
+state.timer.tma;
+
+gbTimer.tac=
+state.timer.tac;
+
+gbTimer.counter=
+state.timer.counter;
+
+
+/* APU */
+
+gbAPU.active=
+[
+...state.apu.active
+];
+
+gbAPU.phase=
+[
+...state.apu.phase
+];
+
+gbAPU.noisePhase=
+state.apu.noisePhase;
+
+gbAPU.noiseLFSR=
+state.apu.noiseLFSR;
+
+
+/* Joypad */
+
+gbJoypad.A=
+state.joypad.A;
+
+gbJoypad.B=
+state.joypad.B;
+
+gbJoypad.SELECT=
+state.joypad.SELECT;
+
+gbJoypad.START=
+state.joypad.START;
+
+gbJoypad.UP=
+state.joypad.UP;
+
+gbJoypad.DOWN=
+state.joypad.DOWN;
+
+gbJoypad.LEFT=
+state.joypad.LEFT;
+
+gbJoypad.RIGHT=
+state.joypad.RIGHT;
+
+gbJoypad.selectButtons=
+state.joypad.selectButtons;
+
+gbJoypad.selectDpad=
+state.joypad.selectDpad;
+
+
+/* VRAM changed */
+
+gbTileDirty.fill(1);
+
+
+/* Redraw immediately */
+
+gbPPUDrawBackground();
+
+
+alert(
+"Game loaded."
+);
+
+console.log(
+"Game Boy save state loaded."
+);
+
+}
+catch(e){
+
+console.error(
+"Load state failed:",
+e
+);
+
+alert(
+"Could not load the saved game."
+);
+
+}
+
+}   
 
 /* =========================================================
    TOP BUTTONS
@@ -6443,6 +6985,23 @@ speed2x
 "SPEED 1X";
 
 };
+
+document.getElementById(
+"save"
+).onclick=function(){
+
+gbSaveState();
+
+};
+
+
+document.getElementById(
+"load"
+).onclick=function(){
+
+gbLoadState();
+
+};   
 /* =========================================================
    GAME LOOP
 ========================================================= */
