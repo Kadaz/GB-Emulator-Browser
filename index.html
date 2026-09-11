@@ -1390,10 +1390,23 @@ z==="shift"
 )
 keyboardInput.b=1;
 
+if(z==="enter"){
+
+e.preventDefault();
+gbJoypad.START=1;
+
+}
+
+if(z==="backspace"){
+
+e.preventDefault();
+gbJoypad.SELECT=1;
+
+}
+
 if(z==="escape"){
 
 e.preventDefault();
-
 pause=!pause;
 
 }
@@ -1444,6 +1457,20 @@ z==="x" ||
 z==="shift"
 )
 keyboardInput.b=0;
+
+if(z==="enter"){
+
+e.preventDefault();
+gbJoypad.START=0;
+
+}
+
+if(z==="backspace"){
+
+e.preventDefault();
+gbJoypad.SELECT=0;
+
+}
 
 }
 
